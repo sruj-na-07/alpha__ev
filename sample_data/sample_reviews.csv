@@ -1,0 +1,26 @@
+review_id,review_text,rating,date,source
+1,"The charging speed at this station is excellent! Got my car to 80% in just 25 minutes using the CCS connector. However, the app kept crashing when I tried to start the session.",4,2024-01-15,Google Reviews
+2,"Terrible experience. Waited 45 minutes because 2 out of 3 chargers were broken. When I finally got one working, the payment system failed twice. Very frustrating!",1,2024-01-18,App Store
+3,"Love the location - right next to a coffee shop and grocery store. Makes the 30-minute charge fly by. Prices are reasonable too at $0.35/kWh.",5,2024-01-20,Google Reviews
+4,"The charger gave me error code E-301 three times before it finally started. Customer support was helpful though - they walked me through a fix over the phone.",3,2024-02-01,Trustpilot
+5,"Way too expensive compared to other networks. $0.55/kWh is highway robbery. The charging speed was decent but not worth the premium price.",2,2024-02-05,App Store
+6,"Absolutely love this charging network! Fast, reliable, and the app is super intuitive. Best EV charging experience I've had. The stations are always clean and well-maintained.",5,2024-02-10,Google Reviews
+7,"App is unusable. Can't find nearby stations, the map doesn't load half the time, and I lost my charging history after the last update. Please fix your software!",1,2024-02-12,App Store
+8,"Good charging speed but terrible availability. Every time I visit this location, there's a long queue. They need to add more chargers ASAP.",3,2024-02-15,Google Reviews
+9,"The CHAdeMO connector at this station hasn't worked in weeks. I've reported it multiple times but nothing gets fixed. Very disappointing reliability.",1,2024-02-18,Trustpilot
+10,"Great improvement suggestion: add real-time queue information to the app so we can plan our charging stops better. Currently it's a guessing game.",4,2024-02-20,App Store
+11,"Neutral experience overall. Charging worked fine but nothing special. Average speed, average price, average location. It gets the job done.",3,2024-03-01,Google Reviews
+12,"Super happy with the new payment options! Apple Pay and Google Pay finally work. No more fumbling with credit cards in the rain. 😊👍",5,2024-03-05,App Store
+13,"The Tesla Supercharger adapter works but the charging speed is significantly reduced. Expected 150kW but only got 50kW. Disappointed.",2,2024-03-08,Google Reviews
+14,"Customer support took 3 days to respond to my billing complaint. When they did respond, they just sent a generic template. Not helpful at all.",1,2024-03-12,Trustpilot
+15,"Perfect spot for charging while shopping at the mall. The 2 hours of free charging with purchase is an amazing deal! Will definitely come back. 🎉",5,2024-03-15,Google Reviews
+16,"The station was in a sketchy area with no lighting. Didn't feel safe charging at night. Please improve the location safety and add proper lighting.",2,2024-03-18,App Store
+17,"Solid experience. The CCS fast charger delivered as promised - 350kW peak speed. My Hyundai Ioniq 5 charged from 10% to 80% in 18 minutes flat!",5,2024-03-22,Google Reviews
+18,"ok",3,2024-03-25,App Store
+19,"Error code F-102 keeps appearing. Multiple chargers at this location seem to have the same firmware issue. Reliability needs serious work.",1,2024-03-28,Trustpilot
+20,"I suggest they should add a canopy or shelter over the chargers. Charging in rain or extreme sun is not pleasant. Simple improvement that would help a lot.",4,2024-04-01,Google Reviews
+21,"The charger gave me error code E-301 three times before it finally started. Customer support was helpful though - they walked me through a fix over the phone.",3,2024-04-02,Trustpilot
+22,"Been using this network for 6 months now. Initially had issues but they've really improved. Faster chargers, better app, and prices dropped. Happy customer! 😃",4,2024-04-05,Google Reviews
+23,"Charged here yesterday. It was fine.",3,2024-04-08,App Store
+24,"DO NOT USE THIS STATION! The charger damaged my car's charging port. Cost me $500 to repair. Filing a complaint and considering legal action. Absolutely unacceptable!",1,2024-04-10,Trustpilot
+25,"The new stations they installed have beautiful displays and are very user-friendly. However, only 1 out of 4 was actually working when I visited. Availability is still a huge problem.",3,2024-04-15,Google Reviews
