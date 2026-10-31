@@ -1,339 +1,455 @@
-import re
-import os
-import pickle
-from typing import Dict, List, Tuple, Any, Optional
-import numpy as np
 
+import re
+from typing import Any, Dict, List, Optional, Tuple
+
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.multiclass import OneVsRestClassifier
 from sklearn.preprocessing import MultiLabelBinarizer
 
-from backend.ml.seed_data import SEED_DATA, ASPECT_DISPLAY_NAMES, ALL_LABELS
+from backend.ml.seed_data import (
+    SEED_DATA,
+    ASPECT_DISPLAY_NAMES,
+    ALL_LABELS,
+)
 
-# -------------------------------------------------------------
-# Curated Aspect Keywords & Sentiment Lexicon
-# -------------------------------------------------------------
+
+# ============================================================
+# 1. EV CHARGING-STATION ASPECT KEYWORDS
+# ============================================================
 
 ASPECT_KEYWORDS = {
-    "range_battery": [
-        "range", "battery", "miles", "mileage", "km", "kwh", "degradation",
-        "degrade", "battery health", "drain", "phantom drain", "winter range",
-        "cold weather range", "efficiency", "mpge", "wh/mi", "wh/km", "pack",
-        "soc", "state of charge", "capacity", "bms", "battery management",
+    "pricing": [
+        "price", "pricing", "tariff", "charging cost", "cost per kwh",
+        "expensive", "cheap", "affordable", "overpriced", "rate",
+        "charging fee", "service charge", "electricity rate",
     ],
-    "charging": [
-        "charge", "charging", "charger", "supercharger", "supercharging",
-        "ccs", "nacs", "chademo", "plug", "station", "level 2", "l2", "dcfc",
-        "fast charge", "fast charging", "electrify america", "evgo", "ionity",
-        "chargepoint", "stall", "kwh rate", "kw", "charge port", "connector",
+    "payment_issues": [
+        "payment", "paid", "payment failed", "transaction", "refund",
+        "wallet", "billing", "charged twice", "double charge",
+        "money deducted", "upi", "invoice", "receipt", "recharge balance",
     ],
-    "performance": [
-        "acceleration", "torque", "speed", "fast", "quick", "handling",
-        "steering", "responsive", "pedal", "power", "0-60", "horse power",
-        "horsepower", "regen", "regenerative", "braking", "cornering",
-        "sport mode", "drive unit", "motor", "dual motor", "awd",
-    ],
-    "software_infotainment": [
-        "software", "screen", "touchscreen", "infotainment", "navigation",
-        "gps", "display", "ota", "update", "bluetooth", "carplay", "android auto",
-        "app", "mobile app", "lag", "ui", "interface", "audio", "sound system",
-        "spotify", "connectivity", "glitch", "freeze", "reboot",
-    ],
-    "interior_comfort": [
-        "seat", "seats", "cabin", "quiet", "noise", "road noise", "wind noise",
-        "comfortable", "comfort", "suspension", "ride", "ride quality",
-        "materials", "leather", "dashboard", "ac", "air condition", "heating",
-        "heat pump", "ventilated", "lumbar", "headroom", "legroom",
-    ],
-    "build_quality": [
-        "build quality", "panel gap", "panel gaps", "paint", "finish", "fit and finish",
-        "squeak", "squeaks", "rattle", "rattles", "trim", "door", "glass",
-        "seal", "seals", "alignment", "weatherstrip", "water leak", "defect",
-    ],
-    "safety_driver_assist": [
-        "autopilot", "fsd", "self-driving", "driver assist", "adas", "cruise control",
-        "adaptive cruise", "lane keep", "blind spot", "phantom brake", "phantom braking",
-        "sensor", "camera", "airbag", "safety", "collision", "emergency brake",
-    ],
-    "price_value": [
-        "price", "cost", "value", "expensive", "cheap", "affordable", "tax credit",
-        "rebate", "incentive", "depreciation", "resale", "overpriced", "worth it",
-        "deal", "lease", "insurance", "subscription",
-    ],
-    "customer_service": [
-        "customer service", "dealer", "dealership", "service center", "support",
-        "warranty", "appointment", "loaner", "mechanic", "repair", "ticket",
-        "delivery", "advisor", "recall", "service team",
+    "charging_speed": [
+        "charging speed", "charge speed", "slow charging", "fast charging",
+        "charging time", "takes hours", "kw", "kilowatt", "power output",
+        "charging rate", "charging took", "charged quickly",
     ],
     "reliability": [
-        "reliable", "reliability", "breakdown", "broke down", "broken", "issue",
-        "problem", "failure", "stranded", "tow", "towed", "error code",
-        "warning light", "fault", "durable", "durability", "12v battery", "bricked",
+        "charger not working", "charger broken", "charger offline",
+        "station down", "not operational", "out of order", "fault",
+        "failed to charge", "charging failed", "stopped charging",
+        "unreliable", "working properly", "technical issue",
     ],
-    "space_practicality": [
-        "space", "trunk", "frunk", "cargo", "storage", "boot", "practical",
-        "practicality", "family", "stroller", "luggage", "folding seats",
-        "roomy", "cramped", "backseat", "back seat",
+    "waiting_time": [
+        "waiting", "wait time", "queue", "queued", "long wait",
+        "waiting time", "delay", "delayed", "busy", "waiting for charger",
+    ],
+    "app_usability": [
+        "app", "application", "login", "log in", "sign in", "signup",
+        "sign up", "crash", "crashes", "freezes", "interface", "ui",
+        "user friendly", "easy to use", "difficult to use", "map",
+        "booking", "session history", "location not updating",
+    ],
+    "availability": [
+        "available", "availability", "occupied", "unavailable",
+        "charger available", "no charger", "fully occupied",
+        "slots available", "all chargers busy", "not available",
+        "charger status", "reservation",
+    ],
+    "location_convenience": [
+        "location", "located", "directions", "navigation", "nearby",
+        "easy to find", "hard to find", "accessible", "accessibility",
+        "parking", "station location", "easy to reach", "remote location",
+    ],
+    "improvement_suggestion": [
+        "should improve", "please add", "please improve", "suggest",
+        "suggestion", "need to add", "would be better", "request",
+        "recommend adding", "hope they", "needs improvement",
+        "more chargers", "add more stations",
+    ],
+    "overall_experience": [
+        "overall experience", "overall", "experience", "service",
+        "convenient", "satisfied", "dissatisfied", "disappointed",
+        "excellent service", "great experience", "poor experience",
+        "good service", "bad service", "recommend this app",
+    ],
+    "customer_support": [
+        "customer support", "customer service", "support team",
+        "help desk", "helpline", "complaint", "complaints",
+        "no response", "responded", "response from support",
+        "support ticket", "issue resolution", "resolved my issue",
+        "not resolved", "customer care", "contacted support",
+        "assistance", "representative", "service team",
     ],
 }
 
+
 POSITIVE_WORDS = {
-    "great", "excellent", "amazing", "good", "fast", "smooth", "love", "loved",
-    "best", "perfect", "flawless", "impressive", "outstanding", "reliable",
-    "comfortable", "quiet", "high", "easy", "effortless", "fantastic", "solid",
-    "pleased", "happy", "recommend", "superior", "snappy", "wonderful", "super",
-    "plenty", "spacious", "responsive", "intuitive", "helpful", "valuable", "exceeded",
+    "good", "great", "excellent", "amazing", "awesome", "fast",
+    "smooth", "easy", "quick", "helpful", "reliable", "available",
+    "convenient", "affordable", "cheap", "responsive", "resolved",
+    "satisfied", "best", "perfect", "friendly", "efficient",
+    "working", "seamless", "improved", "recommend", "successful",
+    "accurate", "accessible", "prompt", "polite",
 }
 
 NEGATIVE_WORDS = {
-    "bad", "terrible", "horrible", "poor", "slow", "disappointed", "disappointing",
-    "broken", "broke", "issue", "issues", "problem", "problems", "fail", "failed",
-    "failure", "awful", "worst", "uncomfortable", "noisy", "loud", "cheap",
-    "expensive", "overpriced", "glitch", "buggy", "laggy", "stranded", "freeze",
-    "freezes", "died", "dead", "unacceptable", "annoying", "hate", "hated",
-    "cramped", "harsh", "stiff", "rattle", "squeak", "defect", "flawed", "useless",
+    "bad", "poor", "terrible", "worst", "slow", "failed", "failure",
+    "broken", "unavailable", "expensive", "overpriced", "crashed",
+    "crash", "bug", "bugs", "error", "errors", "problem", "problems",
+    "issue", "issues", "delay", "delayed", "frustrating", "useless",
+    "disappointed", "unreliable", "stuck", "deducted", "refused",
+    "unresponsive", "inconvenient", "difficult", "waste", "incorrect",
+    "unresolved", "rude", "inaccessible", "cancelled", "failed",
 }
 
 NEGATIONS = {
-    "not", "no", "never", "hardly", "barely", "scarcely", "without", "none",
-    "didn't", "didnt", "don't", "dont", "doesn't", "doesnt", "wasn't", "wasnt",
-    "isn't", "isnt", "won't", "wont", "can't", "cant", "couldn't", "couldnt",
+    "not", "no", "never", "hardly", "barely", "without", "neither",
+    "didn't", "didnt", "don't", "dont", "doesn't", "doesnt",
+    "wasn't", "wasnt", "isn't", "isnt", "won't", "wont",
+    "can't", "cant", "couldn't", "couldnt",
+}
+
+INTENSIFIERS = {
+    "very", "extremely", "really", "highly", "super", "too",
+    "incredibly", "absolutely",
 }
 
 EMOTION_KEYWORDS = {
     "frustrated": [
-        "frustrated", "frustrating", "annoyed", "annoying", "angry", "terrible",
-        "nightmare", "scam", "unacceptable", "furious", "garbage", "lemon",
-        "stranded", "ridiculous", "worst experience", "fed up", "waste of money",
+        "frustrated", "frustrating", "angry", "annoyed", "annoying",
+        "nightmare", "ridiculous", "fed up", "useless", "scam",
     ],
     "sad": [
-        "disappointed", "disappointing", "sad", "unfortunate", "regret", "regretted",
-        "upset", "pity", "depressed", "letdown", "wished", "miss", "shame",
+        "disappointed", "disappointing", "regret", "upset",
+        "unfortunate", "letdown", "sad",
     ],
     "happy": [
-        "happy", "love", "thrilled", "excited", "awesome", "delighted", "joy",
-        "fun", "best car", "fantastic", "amazing", "smiling", "ecstatic",
+        "happy", "love", "loved", "thrilled", "excited", "awesome",
+        "delighted", "fantastic", "amazing",
     ],
     "satisfaction": [
-        "satisfied", "satisfaction", "content", "solid", "dependable", "meets expectations",
-        "good enough", "does the job", "reliable", "practical", "reasonable", "pleased",
+        "satisfied", "satisfaction", "helpful", "dependable",
+        "convenient", "reliable", "pleased", "worth it",
     ],
     "neutral": [
-        "average", "okay", "ok", "fine", "neutral", "standard", "normal", "moderate",
+        "average", "okay", "ok", "fine", "normal", "moderate",
     ],
 }
 
 
+# ============================================================
+# 2. TEXT UTILITIES
+# ============================================================
+
+def _normalize_text(text: Any) -> str:
+    """Normalize missing values and whitespace without losing meaning."""
+    if text is None:
+        return ""
+
+    if isinstance(text, float) and np.isnan(text):
+        return ""
+
+    return re.sub(r"\s+", " ", str(text)).strip().lower()
+
+
+def _contains_phrase(text: str, phrase: str) -> bool:
+    """Match whole words/phrases to reduce accidental substring matches."""
+    pattern = r"(?<!\w)" + re.escape(phrase.lower()) + r"(?!\w)"
+    return re.search(pattern, text) is not None
+
+
+def _is_negated(words: List[str], index: int) -> bool:
+    """Check nearby words for negation, including common contractions."""
+    start = max(0, index - 3)
+    window = words[start:index]
+
+    if any(word in NEGATIONS for word in window):
+        return True
+
+    # Handle constructions such as 'unable to charge' and 'failed to pay'.
+    preceding = " ".join(window)
+    return any(
+        phrase in preceding
+        for phrase in (
+            "unable to", "failed to", "fails to",
+            "not able to", "never able to",
+        )
+    )
+
+
+# ============================================================
+# 3. RULE-BASED SENTIMENT AND EMOTION
+# ============================================================
+
 class RuleBasedSentimentAnalyzer:
-    """EV-domain rule-based sentiment and emotion analyzer."""
+    """Lightweight sentiment and emotion analyzer for EV service reviews."""
 
     def analyze_sentiment(
         self,
         text: str,
         rating: Optional[float] = None,
     ) -> Tuple[str, float]:
-        """
-        Determines overall sentiment ('positive', 'negative', 'neutral')
-        and confidence score (0.0 to 1.0).
-        """
-        text_lower = text.lower()
-        words = re.findall(r"\b[a-zA-Z\'-]+\b", text_lower)
+
+        text = _normalize_text(text)
+        words = re.findall(r"\b[a-zA-Z]+(?:'[a-z]+)?\b", text)
 
         pos_score = 0.0
         neg_score = 0.0
 
         for i, word in enumerate(words):
-            # Check negation in previous 3 words
-            negated = False
-            start_window = max(0, i - 3)
-            for prev in words[start_window:i]:
-                if prev in NEGATIONS:
-                    negated = True
-                    break
+            negated = _is_negated(words, i)
 
-            weight = 1.0
-            if i > 0 and words[i - 1] in {"very", "extremely", "super", "highly", "really"}:
-                weight = 1.5
+            weight = 1.5 if i > 0 and words[i - 1] in INTENSIFIERS else 1.0
 
             if word in POSITIVE_WORDS:
                 if negated:
                     neg_score += weight
                 else:
                     pos_score += weight
+
             elif word in NEGATIVE_WORDS:
                 if negated:
-                    pos_score += weight * 0.8  # "not bad" is mildly positive
+                    pos_score += weight * 0.8
                 else:
                     neg_score += weight
 
-        # Calibrate with rating if provided (1-5 star scale)
-        if rating is not None and not np.isnan(rating):
-            if rating >= 4.0:
-                pos_score += 1.5 * (rating - 3.0)
-            elif rating <= 2.0:
-                neg_score += 1.5 * (3.0 - rating)
+        # A star rating is supplementary evidence, not a replacement
+        # for the actual text. Ratings should be on a 1-5 scale.
+        if rating is not None:
+            try:
+                rating = float(rating)
+                if np.isfinite(rating) and 1 <= rating <= 5:
+                    if rating >= 4:
+                        pos_score += 1.0 * (rating - 3)
+                    elif rating <= 2:
+                        neg_score += 1.0 * (3 - rating)
+            except (TypeError, ValueError):
+                pass
 
-        diff = pos_score - neg_score
         total = pos_score + neg_score
+        difference = pos_score - neg_score
 
         if total == 0:
-            if rating is not None and not np.isnan(rating):
-                if rating >= 4.0:
-                    return "positive", min(0.65 + (rating - 4.0) * 0.15, 0.95)
-                elif rating <= 2.0:
-                    return "negative", min(0.65 + (2.0 - rating) * 0.15, 0.95)
-            return "neutral", 0.70
+            if rating is not None:
+                try:
+                    r = float(rating)
+                    if np.isfinite(r) and 1 <= r <= 5:
+                        if r >= 4:
+                            return "positive", 0.70
+                        if r <= 2:
+                            return "negative", 0.70
+                except (TypeError, ValueError):
+                    pass
+            return "neutral", 0.65
 
-        if diff > 0.5:
-            confidence = min(0.60 + (diff / (total + 1.0)) * 0.35, 0.98)
-            return "positive", round(confidence, 3)
-        elif diff < -0.5:
-            confidence = min(0.60 + (abs(diff) / (total + 1.0)) * 0.35, 0.98)
-            return "negative", round(confidence, 3)
+        if difference > 0:
+            sentiment = "positive"
+        elif difference < 0:
+            sentiment = "negative"
         else:
-            confidence = 0.65
-            return "neutral", round(confidence, 3)
+            return "neutral", 0.65
+
+        confidence = min(
+            0.60 + abs(difference) / (total + 1.0) * 0.35,
+            0.95,
+        )
+        return sentiment, round(confidence, 3)
 
     def analyze_emotion(
         self,
         text: str,
         overall_sentiment: str,
     ) -> Tuple[str, float]:
-        """
-        Determines dominant emotion ('happy', 'sad', 'frustrated', 'satisfaction', 'neutral')
-        and confidence.
-        """
-        text_lower = text.lower()
-        counts: Dict[str, float] = {k: 0.0 for k in EMOTION_KEYWORDS}
 
-        for emotion, keywords in EMOTION_KEYWORDS.items():
-            for kw in keywords:
-                if kw in text_lower:
-                    counts[emotion] += 1.0
+        text = _normalize_text(text)
 
-        # Strongest detected emotion keyword
-        best_emotion = max(counts, key=counts.get)
-        max_count = counts[best_emotion]
+        counts = {
+            emotion: sum(
+                1 for phrase in phrases
+                if _contains_phrase(text, phrase)
+            )
+            for emotion, phrases in EMOTION_KEYWORDS.items()
+        }
 
-        if max_count > 0:
-            confidence = min(0.65 + max_count * 0.1, 0.95)
+        # Avoid assigning neutral just because it appears first.
+        non_neutral = {
+            k: v for k, v in counts.items() if k != "neutral"
+        }
+
+        best_emotion = max(non_neutral, key=non_neutral.get)
+
+        if non_neutral[best_emotion] > 0:
+            confidence = min(
+                0.65 + non_neutral[best_emotion] * 0.08, 0.93
+            )
             return best_emotion, round(confidence, 3)
 
-        # Fallback based on sentiment
         if overall_sentiment == "positive":
             return "satisfaction", 0.70
-        elif overall_sentiment == "negative":
+        if overall_sentiment == "negative":
             return "frustrated", 0.70
-        else:
-            return "neutral", 0.80
 
+        return "neutral", 0.75
+
+
+# ============================================================
+# 4. ALPHAEV ASPECT CLASSIFIER
+# ============================================================
 
 class AlphaEVClassifier:
     """
-    Hybrid Aspect-Based Sentiment Classification Engine:
-    1. Scikit-learn TF-IDF + LogisticRegression (One-Vs-Rest) for all 22 classes.
-    2. Curated rule-based keyword & context fallback that operates zero-shot.
-    3. Integrated SHAP word attribution explanations for linear classifiers.
+    Multi-label classifier for EV charging-station reviews.
+
+    Uses:
+    - TF-IDF and One-vs-Rest Logistic Regression
+    - Curated charging-domain keyword fallback
+    - Aspect-specific polarity heuristics
+    - Linear-model word attribution explanations
     """
 
     def __init__(self):
         self.rule_sentiment = RuleBasedSentimentAnalyzer()
+
         self.vectorizer = TfidfVectorizer(
             ngram_range=(1, 2),
-            max_features=5000,
+            max_features=8000,
             sublinear_tf=True,
             stop_words="english",
         )
+
         self.mlb = MultiLabelBinarizer(classes=ALL_LABELS)
         self.model: Optional[OneVsRestClassifier] = None
         self.is_trained = False
 
-        # Initialize and fit on curated seed dataset immediately
         self._initialize_seed_model()
 
     def _initialize_seed_model(self):
-        """Train baseline model with rich curated seed data so it works immediately."""
+        """Fit the baseline classifier using curated EV review examples."""
+        if not SEED_DATA:
+            return
+
         texts = [item[0] for item in SEED_DATA]
         labels = [item[1] for item in SEED_DATA]
 
         try:
             self.train(texts, labels)
-        except Exception as e:
-            print(f"[Warning] Seed model initialization skipped: {e}")
+        except (ValueError, TypeError) as exc:
+            print(f"[Warning] Could not initialize seed model: {exc}")
 
-    def train(self, texts: List[str], labels: List[List[str]]):
-        """
-        Train the TF-IDF and OneVsRest LogisticRegression model.
-        labels is a list of label lists, e.g. [["range_battery:pos", "charging:pos"]]
-        """
-        X = self.vectorizer.fit_transform(texts)
+    def train(
+        self,
+        texts: List[str],
+        labels: List[List[str]],
+    ):
+        """Train using labels such as ['pricing:neg', 'app_usability:pos']."""
+        if len(texts) != len(labels) or not texts:
+            raise ValueError("Texts and labels must be non-empty and equal in length.")
+
+        cleaned_texts = [_normalize_text(t) for t in texts]
+
+        if any(not text for text in cleaned_texts):
+            raise ValueError("Training data contains empty review text.")
+
+        valid_labels = set(ALL_LABELS)
+        for row_labels in labels:
+            unknown = set(row_labels) - valid_labels
+            if unknown:
+                raise ValueError(f"Unknown labels in training data: {unknown}")
+
+        X = self.vectorizer.fit_transform(cleaned_texts)
         y = self.mlb.fit_transform(labels)
 
         base_estimator = LogisticRegression(
             C=1.5,
-            max_iter=300,
+            max_iter=500,
             class_weight="balanced",
             solver="liblinear",
         )
+
         self.model = OneVsRestClassifier(base_estimator)
         self.model.fit(X, y)
         self.is_trained = True
 
-    def _rule_based_aspect_predict(self, text: str) -> List[Dict[str, Any]]:
-        """Zero-shot aspect and polarity classifier based on keywords and context."""
-        text_lower = text.lower()
-        words = re.findall(r"\b[a-zA-Z\'-]+\b", text_lower)
+    def _rule_based_aspect_predict(
+        self,
+        text: str,
+    ) -> List[Dict[str, Any]]:
+        """Detect charging-station aspects and estimate their polarity."""
+        normalized = _normalize_text(text)
+        words = re.findall(r"\b[a-zA-Z]+(?:'[a-z]+)?\b", normalized)
         predictions = []
 
         for aspect, keywords in ASPECT_KEYWORDS.items():
-            found_kw = False
-            for kw in keywords:
-                if kw in text_lower:
-                    found_kw = True
-                    break
+            matched = [
+                phrase for phrase in keywords
+                if _contains_phrase(normalized, phrase)
+            ]
 
-            if not found_kw:
+            if not matched:
                 continue
 
-            # Determine polarity in context of this aspect
-            pos_matches = 0
-            neg_matches = 0
+            # Locate keyword occurrences and inspect local sentiment.
+            pos_score = 0.0
+            neg_score = 0.0
 
-            # Scan surrounding words
-            for i, word in enumerate(words):
-                if any(kw_part in word for kw_part in keywords if len(kw_part) > 3):
-                    # Check window of 5 words around keyword
-                    start = max(0, i - 4)
-                    end = min(len(words), i + 5)
+            for phrase in matched:
+                phrase_words = phrase.split()
+
+                positions = [
+                    i for i in range(len(words))
+                    if words[i:i + len(phrase_words)] == phrase_words
+                ]
+
+                for position in positions:
+                    start = max(0, position - 4)
+                    end = min(len(words), position + len(phrase_words) + 5)
                     window = words[start:end]
 
-                    # Negation check
-                    has_negation = any(neg in window[:min(4, len(window))] for neg in NEGATIONS)
+                    for j, word in enumerate(window):
+                        negated = _is_negated(window, j)
+                        weight = (
+                            1.5 if j > 0 and window[j - 1] in INTENSIFIERS
+                            else 1.0
+                        )
 
-                    for w in window:
-                        if w in POSITIVE_WORDS:
-                            if has_negation:
-                                neg_matches += 1
+                        if word in POSITIVE_WORDS:
+                            if negated:
+                                neg_score += weight
                             else:
-                                pos_matches += 1
-                        elif w in NEGATIVE_WORDS:
-                            if has_negation:
-                                pos_matches += 0.8
+                                pos_score += weight
+                        elif word in NEGATIVE_WORDS:
+                            if negated:
+                                pos_score += weight * 0.8
                             else:
-                                neg_matches += 1
+                                neg_score += weight
 
-            # Default to text-level sentiment if window is neutral
-            if pos_matches == 0 and neg_matches == 0:
-                overall, _ = self.rule_sentiment.analyze_sentiment(text)
-                polarity = "pos" if overall == "positive" else ("neg" if overall == "negative" else "pos")
-                confidence = 0.72
-            elif pos_matches >= neg_matches:
+            # Explicit improvement suggestions are not automatically negative.
+            if aspect == "improvement_suggestion" and matched:
+                polarity = "neg" if neg_score > pos_score else "pos"
+                confidence = 0.70
+
+            elif pos_score == 0 and neg_score == 0:
+                overall, _ = self.rule_sentiment.analyze_sentiment(normalized)
+                polarity = (
+                    "pos" if overall == "positive"
+                    else "neg" if overall == "negative"
+                    else "pos"
+                )
+                confidence = 0.60
+
+            elif pos_score > neg_score:
                 polarity = "pos"
-                confidence = min(0.75 + (pos_matches * 0.05), 0.95)
-            else:
+                confidence = min(0.65 + 0.05 * pos_score, 0.90)
+
+            elif neg_score > pos_score:
                 polarity = "neg"
-                confidence = min(0.75 + (neg_matches * 0.05), 0.95)
+                confidence = min(0.65 + 0.05 * neg_score, 0.90)
+
+            else:
+                polarity = "pos"
+                confidence = 0.60
 
             predictions.append({
                 "aspect": aspect,
@@ -351,113 +467,135 @@ class AlphaEVClassifier:
         threshold: float = 0.35,
         use_fallback: bool = True,
     ) -> List[Dict[str, Any]]:
-        """
-        Predict aspect labels and polarities for a given text.
-        Returns a list of dicts:
-        [{'aspect': 'range_battery', 'polarity': 'pos', 'confidence': 0.88, ...}]
-        """
+        """Return the detected aspects and their predicted polarities."""
+        normalized = _normalize_text(text)
+
+        if not normalized:
+            return []
+
         results: List[Dict[str, Any]] = []
 
-        if self.is_trained and self.model:
+        if self.is_trained and self.model is not None:
             try:
-                X = self.vectorizer.transform([text])
+                X = self.vectorizer.transform([normalized])
                 probabilities = self.model.predict_proba(X)[0]
 
-                for idx, prob in enumerate(probabilities):
-                    if prob >= threshold:
+                for idx, probability in enumerate(probabilities):
+                    if probability >= threshold:
                         label = self.mlb.classes_[idx]
-                        aspect, polarity = label.split(":")
+                        aspect, polarity = label.rsplit(":", 1)
+
                         results.append({
                             "aspect": aspect,
                             "polarity": polarity,
-                            "confidence": round(float(prob), 3),
+                            "confidence": round(float(probability), 3),
                             "model_prediction": label,
-                            "model_confidence": round(float(prob), 3),
+                            "model_confidence": round(float(probability), 3),
                         })
-            except Exception:
-                pass
+            except (ValueError, AttributeError, IndexError) as exc:
+                print(f"[Warning] Model prediction failed: {exc}")
 
-        # If model gave no results or fallback is requested when empty
+        # Use domain rules when the model has no confident predictions.
         if not results and use_fallback:
-            results = self._rule_based_aspect_predict(text)
+            results = self._rule_based_aspect_predict(normalized)
 
-        # De-duplicate aspect pairs: if both pos and neg exist for same aspect, pick higher confidence
-        aspect_dict: Dict[str, Dict[str, Any]] = {}
-        for res in results:
-            asp = res["aspect"]
-            if asp not in aspect_dict or res["confidence"] > aspect_dict[asp]["confidence"]:
-                aspect_dict[asp] = res
+        # Keep only one polarity per aspect, choosing the higher confidence.
+        unique: Dict[str, Dict[str, Any]] = {}
+        for result in results:
+            aspect = result["aspect"]
+            if (
+                aspect not in unique
+                or result["confidence"] > unique[aspect]["confidence"]
+            ):
+                unique[aspect] = result
 
-        return list(aspect_dict.values())
+        return list(unique.values())
 
-    def explain(self, text: str, top_k: int = 5) -> Dict[str, Any]:
+    def explain(
+        self,
+        text: str,
+        top_k: int = 5,
+    ) -> Dict[str, Any]:
         """
-        Explain predictions using feature attribution / SHAP method for linear TF-IDF model.
-        Returns top influential words for each active aspect.
+        Return influential TF-IDF terms for the predicted labels.
+        This is linear-model feature attribution, not SHAP itself.
         """
         predictions = self.predict(text, threshold=0.25)
-        if not self.is_trained or not self.model or not predictions:
-            # Fallback explanation using keyword matches
-            explanations: Dict[str, List[Dict[str, Any]]] = {}
-            for pred in predictions:
-                aspect = pred["aspect"]
-                polarity = pred["polarity"]
-                kws = [w for w in text.lower().split() if w in ASPECT_KEYWORDS.get(aspect, []) or w in POSITIVE_WORDS or w in NEGATIVE_WORDS]
-                explanations[f"{aspect}:{polarity}"] = [
-                    {"word": kw, "score": 0.8} for kw in kws[:top_k]
+
+        if not self.is_trained or self.model is None or not predictions:
+            explanations = {}
+
+            for prediction in predictions:
+                aspect = prediction["aspect"]
+                polarity = prediction["polarity"]
+                text_lower = _normalize_text(text)
+
+                matched_words = [
+                    keyword for keyword in ASPECT_KEYWORDS.get(aspect, [])
+                    if _contains_phrase(text_lower, keyword)
                 ]
+
+                explanations[f"{aspect}:{polarity}"] = [
+                    {"word": word, "score": 0.5}
+                    for word in matched_words[:top_k]
+                ]
+
             return {
                 "aspect_explanations": explanations,
-                "summary": "Explanations generated from EV aspect and sentiment keywords.",
+                "summary": "Explanations are based on charging-domain keywords.",
             }
 
-        X = self.vectorizer.transform([text])
+        X = self.vectorizer.transform([_normalize_text(text)])
         feature_names = self.vectorizer.get_feature_names_out()
-        explanations = {}
-
-        # For linear models, shap attribution = feature_value * weight
-        feature_indices = X.nonzero()[1]
-        feature_values = X.data
-
+        explanations: Dict[str, List[Dict[str, Any]]] = {}
         summary_parts = []
 
-        for pred in predictions:
-            label = f"{pred['aspect']}:{pred['polarity']}"
+        for prediction in predictions:
+            label = (
+                f"{prediction['aspect']}:{prediction['polarity']}"
+            )
+
             if label not in self.mlb.classes_:
                 continue
 
             class_idx = list(self.mlb.classes_).index(label)
             estimator = self.model.estimators_[class_idx]
-            coefs = estimator.coef_[0]
+            coefficients = estimator.coef_[0]
 
-            word_scores = []
-            for col_idx, val in zip(feature_indices, feature_values):
-                weight = coefs[col_idx]
-                attribution = float(val * weight)
-                if attribution > 0:
-                    word_scores.append((feature_names[col_idx], attribution))
+            contributions = []
+            for col_idx in X.nonzero()[1]:
+                value = float(X[0, col_idx])
+                contribution = value * float(coefficients[col_idx])
 
-            # Sort by attribution
-            word_scores.sort(key=lambda x: x[1], reverse=True)
-            top_words = word_scores[:top_k]
+                if contribution > 0:
+                    contributions.append(
+                        (feature_names[col_idx], contribution)
+                    )
+
+            contributions.sort(key=lambda item: item[1], reverse=True)
+            top_words = contributions[:top_k]
 
             explanations[label] = [
-                {"word": w, "score": round(score, 4)} for w, score in top_words
+                {"word": word, "score": round(score, 4)}
+                for word, score in top_words
             ]
 
-            display_aspect = ASPECT_DISPLAY_NAMES.get(pred['aspect'], pred['aspect'])
-            if top_words:
-                words_str = ", ".join([f"'{w}' (+{s:.2f})" for w, s in top_words[:3]])
-                summary_parts.append(
-                    f"{display_aspect} ({'Positive' if pred['polarity'] == 'pos' else 'Negative'}): strongly driven by {words_str}."
-                )
+            display_name = ASPECT_DISPLAY_NAMES.get(
+                prediction["aspect"], prediction["aspect"]
+            )
 
-        summary = " | ".join(summary_parts) if summary_parts else "Prediction attribution computed across tokens."
+            if top_words:
+                summary_parts.append(
+                    f"{display_name} ({prediction['polarity']}): "
+                    + ", ".join(word for word, _ in top_words[:3])
+                )
 
         return {
             "aspect_explanations": explanations,
-            "summary": summary,
+            "summary": " | ".join(summary_parts)
+            if summary_parts else "No influential terms were identified.",
         }
 
 
+# Shared service instance used by the backend.
 classifier_service = AlphaEVClassifier()

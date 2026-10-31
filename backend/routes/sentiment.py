@@ -1,5 +1,7 @@
 from typing import Optional, List, Dict, Any
+
 from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from backend.database import get_db, Dataset, Review, Sentiment
@@ -26,7 +28,18 @@ def analyze_dataset_sentiment(
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset not found.")
 
-    reviews_query = db.query(Review).filter(Review.dataset_id == dataset_id)
+    if dataset.status not in {"classified", "complete"}:
+        raise HTTPException(
+            status_code=400,
+            detail="Please complete aspect classification before sentiment and emotion analysis.",
+        )
+
+    # Use exactly the same eligible-review criteria as aspect classification.
+    reviews_query = db.query(Review).filter(
+        Review.dataset_id == dataset_id,
+        Review.is_low_info.is_(False),
+        func.trim(func.coalesce(Review.cleaned_text, Review.original_text, "")) != "",
+    )
     if skip_duplicates:
         reviews_query = reviews_query.filter(Review.is_duplicate.is_(False))
 
@@ -98,6 +111,7 @@ def analyze_dataset_sentiment(
 
     if dataset.status == "classified":
         dataset.status = "complete"
+    dataset.is_stale = False
 
     db.commit()
     db.refresh(dataset)
@@ -117,14 +131,19 @@ def get_dataset_sentiments(
     emotion: Optional[str] = None,
     is_human_corrected: Optional[bool] = None,
     skip: int = Query(0, ge=0),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=20000),
     db: Session = Depends(get_db),
 ):
     """Retrieve analyzed sentiments and emotions for reviews in a dataset."""
     query = (
         db.query(Sentiment)
         .join(Review, Sentiment.review_id == Review.id)
-        .filter(Review.dataset_id == dataset_id)
+        .filter(
+            Review.dataset_id == dataset_id,
+            Review.is_duplicate.is_(False),
+            Review.is_low_info.is_(False),
+            func.trim(func.coalesce(Review.cleaned_text, Review.original_text, "")) != "",
+        )
     )
 
     if sentiment:

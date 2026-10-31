@@ -29,12 +29,13 @@ class DatasetResponse(BaseModel):
     upload_time: datetime
     status: str
     row_count: int
+    version: int = 1
+    is_stale: bool = False
     column_mapping: Dict[str, Any] = {}
     cleaning_stats: Dict[str, Any] = {}
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class DatasetListResponse(BaseModel):
@@ -68,6 +69,7 @@ class CleaningReportResponse(BaseModel):
     html_removed_count: int
     encoding_fixed_count: int
     flags_breakdown: Dict[str, int]
+    retained_count: int = 0
 
 
 class CleaningStatusResponse(BaseModel):
@@ -100,7 +102,6 @@ class PredictionResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class PredictionUpdateRequest(BaseModel):
@@ -126,7 +127,6 @@ class SentimentResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class SentimentUpdateRequest(BaseModel):
@@ -156,7 +156,6 @@ class ReviewResponse(BaseModel):
 
     class Config:
         from_attributes = True
-        orm_mode = True
 
 
 class ReviewListResponse(BaseModel):
@@ -211,17 +210,148 @@ class QualityMetrics(BaseModel):
     non_english: int
 
 
+class PriorityIssue(BaseModel):
+    aspect: str
+    aspect_display: str
+    severity: str  # "Critical", "High", "Medium", "Low"
+    complaint_count: int
+    frustration_count: int
+    average_rating: Optional[float] = None
+    impact_score: float
+    key_drivers: List[str] = []
+    sample_evidence: Optional[str] = None
+
+
+class ActionableRecommendation(BaseModel):
+    id: str
+    title: str
+    category: str
+    priority: str  # "P0 - Immediate", "P1 - High", "P2 - Medium"
+    description: str
+    target_aspect: str
+    expected_impact: str
+    suggested_action: str
+    supporting_review_count: int
+
+
+class FeaturedProblem(BaseModel):
+    hazard_key: str
+    title: str
+    category: str
+    severity: str  # "Critical", "High", "Medium", "Low"
+    priority_score: float
+    complaint_count: int
+    evidence_confidence: float
+    verification_status: str
+    urgency: str
+    potential_harm: str
+    recommended_action: str
+    supporting_review_ids: List[str] = []
+    supporting_reviews: List[Dict[str, Any]] = []
+    top_evidence_quote: str = ""
+
+
+class CriticalFlagItem(BaseModel):
+    review_id: str
+    hazard_key: str
+    title: str
+    severity: str
+    priority_score: float
+    evidence_confidence: float
+    verification_status: str
+    potential_harm: str
+    urgency: str
+    evidence_quote: str
+    rating: Optional[float] = None
+
+
 class DashboardStatsResponse(BaseModel):
     dataset_id: str
     dataset_name: str
     total_reviews: int
     average_rating: Optional[float] = None
+    version: int = 1
+    is_stale: bool = False
     quality_metrics: QualityMetrics
     aspect_metrics: List[AspectMetric]
     sentiment_distribution: List[SentimentDistribution]
     emotion_distribution: List[EmotionDistribution]
     top_strengths: List[str]
     top_complaints: List[str]
+    priority_issues: List[PriorityIssue] = []
+    recommendations: List[ActionableRecommendation] = []
+    featured_problems: List[FeaturedProblem] = []
+    critical_flags: List[CriticalFlagItem] = []
+
+
+# -----------------------------
+# Dynamic Webhook & Ingestion Schemas
+# -----------------------------
+class WebhookReviewItem(BaseModel):
+    external_review_id: str = Field(..., description="Unique stable ID from external website/source")
+    text: str = Field(..., description="Review text content")
+    rating: Optional[float] = Field(None, ge=1.0, le=5.0, description="Star rating 1-5")
+    review_date: Optional[str] = Field(None, description="Date or ISO timestamp of review")
+    source: Optional[str] = Field("website_reviews", description="Origin source system")
+    reviewer: Optional[str] = Field(None, description="Reviewer name or pseudonym")
+
+
+class WebhookIngestRequest(BaseModel):
+    source: str = "website_reviews"
+    reviews: List[WebhookReviewItem]
+    api_key: Optional[str] = None
+
+
+class IngestedReviewSummary(BaseModel):
+    external_review_id: str
+    internal_review_id: Optional[str] = None
+    status: str  # "inserted", "duplicate", "error"
+    severity_level: Optional[str] = None
+    priority_score: Optional[float] = None
+    error: Optional[str] = None
+
+
+class IngestionResponse(BaseModel):
+    status: str  # "success", "partial", "error"
+    total_received: int
+    total_inserted: int
+    total_duplicates: int
+    total_failed: int
+    dataset_id: Optional[str] = None
+    results: List[IngestedReviewSummary] = []
+    message: str
+
+
+class IngestionStatusResponse(BaseModel):
+    connected: bool
+    source_name: str
+    last_sync_time: Optional[datetime] = None
+    total_received: int
+    total_processed: int
+    total_duplicates: int
+    total_failed: int
+    recent_syncs: List[Dict[str, Any]] = []
+
+
+class AspectEvaluationMetric(BaseModel):
+    label: str
+    aspect_display: str
+    precision: float
+    recall: float
+    f1_score: float
+    support: int
+
+
+class ModelEvaluationResponse(BaseModel):
+    overall_exact_match_ratio: float
+    hamming_loss: float
+    macro_precision: float
+    macro_recall: float
+    macro_f1: float
+    micro_f1: float
+    total_samples: int
+    aspect_metrics: List[AspectEvaluationMetric]
+    summary: str
 
 
 # -----------------------------

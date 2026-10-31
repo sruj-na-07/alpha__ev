@@ -24,17 +24,55 @@
 | Database Models (SQLAlchemy) | ✅ Complete | `backend/database.py` |
 | Pydantic Schemas | ✅ Complete | `backend/models.py` |
 | Upload Routes | ✅ Complete | `backend/routes/upload.py` |
-| Cleaning Routes | ✅ Complete | `backend/routes/cleaning.py` |
+| Cleaning Routes & Dedicated Export | ✅ Verified | `backend/routes/cleaning.py` |
 | Classification Routes | ✅ Complete | `backend/routes/classification.py` |
 | Sentiment Routes | ✅ Complete | `backend/routes/sentiment.py` |
 | Dashboard Routes | ✅ Complete | `backend/routes/dashboard.py` |
 | Chatbot Routes | ✅ Complete | `backend/routes/chatbot.py` |
-| Data Cleaning Service | ✅ Complete | `backend/services/cleaning.py` |
+| Data Cleaning Service (Mojibake, HTML Math Protection, Exclusion/Flag Traceability) | ✅ Verified | `backend/services/cleaning.py` |
 | Classifier Service (TF-IDF + Rules) | ✅ Complete | `backend/services/classifier.py` |
 | Chatbot Service (SQL-grounded) | ✅ Complete | `backend/services/chatbot.py` |
 | Seed Training Data (88 samples) | ✅ Complete | `backend/ml/seed_data.py` |
 | Test Pipeline | ✅ Complete | `backend/test_pipeline.py` |
 | Sample CSV Data | ✅ Complete | `backend/sample_data/sample_ev_reviews.csv` |
+
+---
+
+## Cleaning Module Implementation & Verification Status
+
+### Deficiencies Identified & Addressed
+1. **Mojibake Decoder UnicodeEncodeError Bug**:
+   - *Previous*: `text.encode("latin-1").decode("utf-8")` raised unhandled `UnicodeEncodeError` when text contained emojis alongside mojibake sequences, silently abandoning decoding for the entire string.
+   - *Fix*: Comprehensive 40-item `MOJIBAKE_MAP` covering quotes, hyphens, accents, and symbols. Added regex-targeted byte chunk decoding `_safe_repair_mojibake_bytes` on `[\xc0-\xff][\x80-\xbf]+` with fallback to Windows-1252/Latin-1, preserving emojis and non-Latin-1 characters.
+2. **HTML Stripping False Positives on Mathematical Comparators**:
+   - *Previous*: Generic regex `<[^>]+>` stripped mathematical comparators common in EV reviews (e.g., `battery < 20% and charging speed > 100kW`).
+   - *Fix*: Implemented `HTML_TAG_PATTERN` targeting `<(?:!--[\s\S]*?--|/?(?:[a-zA-Z][a-zA-Z0-9]*)\b[^>]*>)` and `SCRIPT_STYLE_PATTERN` for script/style blocks. Mathematical comparators (`< 20%`, `> 100kW`) are strictly preserved. Entities (`&amp;`, `&lt;`, `&gt;`) are unescaped.
+3. **URL & Spam Cleanup**:
+   - Added `URL_PATTERN` detection to strip promotional web links and flag records with `url_removed`.
+4. **Distinction Between Excluded vs. Flagged Records**:
+   - *Excluded Records* (`action: "excluded"`): Exact duplicates (SHA-256), near duplicates (Jaccard >= 0.85), empty/blank text (`empty_text`), and low-information reviews (< 3 meaningful tokens).
+   - *Flagged Records* (`action: "flagged"`): HTML cleaned, encoding fixed, non-English detected, URL removed. These records are transformed/flagged and retained for downstream analysis.
+   - Full traceability metadata (`action` and `reason`) attached to every flag dictionary.
+5. **Server-Side Flag Filtering in API**:
+   - Updated `GET /api/v1/datasets/{dataset_id}/reviews` with `flags_only: Optional[bool] = Query(None)`.
+   - Uses SQLite `func.json_array_length(Review.flags) > 0` and column checks for accurate pagination across flagged reviews.
+6. **Dedicated Cleaning Export Route**:
+   - Added `GET /api/v1/datasets/{dataset_id}/clean/export` returning a CSV of all reviews with `original_text`, `cleaned_text`, `is_excluded`, `is_duplicate`, `duplicate_of`, `is_low_info`, `language`, and `quality_flags`.
+
+### Test Verification
+- **Unit & Integration Tests**: `backend/tests/test_cleaning.py` (10 of 10 passed, 100%)
+  - `test_mojibake_repair`: Verified standard mojibake repair.
+  - `test_mojibake_repair_with_emojis`: Verified mojibake repair with emojis without `UnicodeEncodeError`.
+  - `test_html_stripping`: Verified HTML tag removal and unescaping.
+  - `test_html_stripping_preserves_mathematical_comparators`: Verified `< 20%` and `> 100kW` are strictly preserved.
+  - `test_url_removal`: Verified removal of promotional links.
+  - `test_ev_technical_terms_preservation`: Verified preservation of `SOC`, `CCS2`, `DCFC`, `BMS`, `Heat Pump`, `CP_a054`.
+  - `test_negations_preservation_in_tokens`: Verified preservation of `not`, `never`, `cannot` in meaningful tokens.
+  - `test_process_reviews_and_duplicate_detection`: Verified exact and near duplicate detection and exclusion flags.
+  - `test_empty_text_and_low_info_traceability`: Verified empty text and low info exclusion traceability.
+  - `test_cleaning_api_routes_and_export`: Verified cleaning endpoint, `flags_only` filtering, and `/clean/export` CSV download.
+- **Full Backend Suite**: `backend/tests/` (39 of 39 passed, 100%)
+- **Frontend Production Build**: `npm run build` (`tsc -b && vite build`) passed with exit code 0.
 
 ### Frontend (React + Vite) — 🔧 IN PROGRESS
 

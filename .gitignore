@@ -13,3 +13,10 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+# Python testing
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE
+.idea/

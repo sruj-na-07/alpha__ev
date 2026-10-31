@@ -13,6 +13,7 @@ from sqlalchemy import (
     Text,
     ForeignKey,
     JSON,
+    text,
 )
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
@@ -42,6 +43,8 @@ class Dataset(Base):
     status = Column(String(50), default="uploaded", nullable=False)
     # Status flow: uploaded -> cleaning -> cleaned -> classifying -> classified -> complete
     row_count = Column(Integer, default=0, nullable=False)
+    version = Column(Integer, default=1, nullable=False)
+    is_stale = Column(Boolean, default=False, nullable=False)
     column_mapping = Column(JSON, default=dict, nullable=False)
     cleaning_stats = Column(JSON, default=dict, nullable=False)
 
@@ -70,6 +73,11 @@ class Review(Base):
     review_date = Column(String(100), nullable=True)
     source = Column(String(100), nullable=True)
     reviewer = Column(String(150), nullable=True)
+    source_review_id = Column(String(150), nullable=True, index=True)
+    severity_score = Column(Float, nullable=True)
+    severity_level = Column(String(20), nullable=True)  # "Critical", "High", "Medium", "Low"
+    hazard_category = Column(String(100), nullable=True)
+    verification_status = Column(String(50), default="unverified_complaint", nullable=True)
     flags = Column(JSON, default=list, nullable=False)  # List of {"type": str, "message": str}
     is_duplicate = Column(Boolean, default=False, nullable=False)
     duplicate_of = Column(String(36), nullable=True)
@@ -132,6 +140,20 @@ class Sentiment(Base):
     review = relationship("Review", back_populates="sentiment")
 
 
+class IngestionSyncLog(Base):
+    __tablename__ = "ingestion_sync_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True, index=True)
+    source = Column(String(100), nullable=False, default="website_reviews")
+    status = Column(String(50), nullable=False, default="success")  # "success", "partial", "failed"
+    reviews_received = Column(Integer, default=0, nullable=False)
+    reviews_inserted = Column(Integer, default=0, nullable=False)
+    reviews_duplicate = Column(Integer, default=0, nullable=False)
+    reviews_failed = Column(Integer, default=0, nullable=False)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
 def get_db() -> Generator:
     """FastAPI dependency for database sessions."""
     db = SessionLocal()
@@ -142,5 +164,25 @@ def get_db() -> Generator:
 
 
 def init_db():
-    """Create all tables in SQLite."""
+    """Create all tables in SQLite and apply non-destructive column migrations."""
     Base.metadata.create_all(bind=engine)
+    with engine.connect() as conn:
+        for stmt in [
+            "ALTER TABLE datasets ADD COLUMN version INTEGER DEFAULT 1",
+            "ALTER TABLE datasets ADD COLUMN is_stale BOOLEAN DEFAULT 0",
+            "ALTER TABLE reviews ADD COLUMN source_review_id VARCHAR(150)",
+            "ALTER TABLE reviews ADD COLUMN severity_score FLOAT",
+            "ALTER TABLE reviews ADD COLUMN severity_level VARCHAR(20)",
+            "ALTER TABLE reviews ADD COLUMN hazard_category VARCHAR(100)",
+            "ALTER TABLE reviews ADD COLUMN verification_status VARCHAR(50) DEFAULT 'unverified_complaint'",
+        ]:
+            try:
+                conn.execute(text(stmt))
+                conn.commit()
+            except Exception:
+                pass
+
+
+# Initialize tables and schema migrations on import
+init_db()
+

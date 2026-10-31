@@ -262,8 +262,10 @@ def map_dataset_columns(
     new_reviews: List[Review] = []
     for idx, row in df.iterrows():
         raw_text = str(row[mapping.text_column]) if pd.notna(row[mapping.text_column]) else ""
-        if not raw_text.strip():
-            continue
+        is_empty = not raw_text.strip()
+        initial_flags = []
+        if is_empty:
+            initial_flags.append({"type": "empty_text", "message": "Row contains no review text in source file"})
 
         rating_val = None
         if mapping.rating_column and mapping.rating_column in df.columns:
@@ -299,11 +301,11 @@ def map_dataset_columns(
             review_date=date_val,
             source=source_val,
             reviewer=reviewer_val,
-            flags=[],
+            flags=initial_flags,
             is_duplicate=False,
             duplicate_of=None,
             language=None,
-            is_low_info=False,
+            is_low_info=is_empty,
         )
         new_reviews.append(review)
 
@@ -312,6 +314,7 @@ def map_dataset_columns(
     dataset.column_mapping = mapping.model_dump() if hasattr(mapping, "model_dump") else mapping.dict()
     dataset.row_count = len(new_reviews)
     dataset.status = "uploaded"
+    dataset.is_stale = False
     db.commit()
     db.refresh(dataset)
 

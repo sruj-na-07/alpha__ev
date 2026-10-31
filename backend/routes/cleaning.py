@@ -1,7 +1,11 @@
+import io
+import re
 from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query
+
+import pandas as pd
+from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from backend.database import get_db, Dataset, Review
 from backend.models import (
@@ -82,6 +86,7 @@ def clean_dataset(
         dataset_id=dataset.id,
         total_reviews=stats["total_reviews"],
         cleaned_count=stats["cleaned_count"],
+        retained_count=stats.get("retained_count", stats["cleaned_count"]),
         exact_duplicates=stats["exact_duplicates"],
         near_duplicates=stats["near_duplicates"],
         low_info_count=stats["low_info_count"],
@@ -133,6 +138,19 @@ def get_cleaning_report(
     stats = dataset.cleaning_stats or {}
     total = stats.get("total_reviews", dataset.row_count)
 
+    retained_count = stats.get("retained_count")
+    if retained_count is None:
+        retained_count = (
+            db.query(Review)
+            .filter(
+                Review.dataset_id == dataset_id,
+                Review.is_duplicate.is_(False),
+                Review.is_low_info.is_(False),
+                func.trim(func.coalesce(Review.cleaned_text, Review.original_text, "")) != "",
+            )
+            .count()
+        )
+
     flags_breakdown = stats.get("flags_breakdown", {
         "exact_duplicate": stats.get("exact_duplicates", 0),
         "near_duplicate": stats.get("near_duplicates", 0),
@@ -146,6 +164,7 @@ def get_cleaning_report(
         dataset_id=dataset.id,
         total_reviews=total,
         cleaned_count=stats.get("cleaned_count", total if dataset.status in ["cleaned", "classified", "complete"] else 0),
+        retained_count=retained_count,
         exact_duplicates=stats.get("exact_duplicates", 0),
         near_duplicates=stats.get("near_duplicates", 0),
         low_info_count=stats.get("low_info_count", 0),
@@ -156,6 +175,7 @@ def get_cleaning_report(
     )
 
 
+
 @router.get("/datasets/{dataset_id}/reviews", response_model=ReviewListResponse)
 def get_dataset_reviews(
     dataset_id: str,
@@ -163,35 +183,92 @@ def get_dataset_reviews(
     page_size: int = Query(20, ge=1, le=100),
     is_duplicate: Optional[bool] = None,
     is_low_info: Optional[bool] = None,
+    flags_only: Optional[bool] = Query(None),
+    usable_only: bool = Query(False),
     search: Optional[str] = None,
     db: Session = Depends(get_db),
 ):
     """
-    Get paginated reviews for a dataset with optional filters
-    (duplicate, low-info, text search).
+    Get paginated reviews for a dataset with optional filters.
     """
-    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
-    if not dataset:
-        raise HTTPException(status_code=404, detail="Dataset not found.")
 
-    query = db.query(Review).filter(Review.dataset_id == dataset_id)
+    dataset = db.query(Dataset).filter(
+        Dataset.id == dataset_id
+    ).first()
+
+    if not dataset:
+        raise HTTPException(
+            status_code=404,
+            detail="Dataset not found."
+        )
+
+    query = db.query(Review).filter(
+        Review.dataset_id == dataset_id
+    )
+
+    # Return only usable reviews
+    if usable_only:
+        query = query.filter(
+            Review.is_duplicate.is_(False),
+            Review.is_low_info.is_(False),
+            func.trim(
+                func.coalesce(
+                    Review.cleaned_text,
+                    Review.original_text,
+                    ""
+                )
+            ) != ""
+        )
 
     if is_duplicate is not None:
-        query = query.filter(Review.is_duplicate == is_duplicate)
+        query = query.filter(
+            Review.is_duplicate == is_duplicate
+        )
 
     if is_low_info is not None:
-        query = query.filter(Review.is_low_info == is_low_info)
+        query = query.filter(
+            Review.is_low_info == is_low_info
+        )
+
+    if flags_only is True:
+        flags_condition = or_(
+            Review.is_duplicate.is_(True),
+            Review.is_low_info.is_(True),
+            (
+                Review.language.isnot(None)
+                & (Review.language != "en")
+            ),
+            func.json_array_length(Review.flags) > 0,
+        )
+        query = query.filter(flags_condition)
+
+    elif flags_only is False:
+        flags_condition = or_(
+            Review.is_duplicate.is_(True),
+            Review.is_low_info.is_(True),
+            (
+                Review.language.isnot(None)
+                & (Review.language != "en")
+            ),
+            func.json_array_length(Review.flags) > 0,
+        )
+        query = query.filter(~flags_condition)
 
     if search and search.strip():
         term = f"%{search.strip()}%"
         query = query.filter(
-            (Review.cleaned_text.ilike(term)) | (Review.original_text.ilike(term))
+            (Review.cleaned_text.ilike(term))
+            | (Review.original_text.ilike(term))
         )
 
     total = query.count()
     offset = (page - 1) * page_size
+
     reviews = (
-        query.options(joinedload(Review.predictions), joinedload(Review.sentiment))
+        query.options(
+            joinedload(Review.predictions),
+            joinedload(Review.sentiment)
+        )
         .order_by(Review.row_index)
         .offset(offset)
         .limit(page_size)
@@ -203,6 +280,115 @@ def get_dataset_reviews(
         page=page,
         page_size=page_size,
         reviews=reviews,
+    )
+
+
+
+@router.get("/datasets/{dataset_id}/clean/export")
+def export_cleaned_reviews(
+    dataset_id: str,
+    db: Session = Depends(get_db),
+):
+    """Export usable reviews and excluded reviews with removal reasons."""
+    dataset = db.query(Dataset).filter(Dataset.id == dataset_id).first()
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset not found.")
+
+    if dataset.status not in ["cleaned", "classifying", "classified", "complete"]:
+        raise HTTPException(status_code=400, detail="Please run cleaning before exporting reviews.")
+
+    reviews = (
+        db.query(Review)
+        .filter(Review.dataset_id == dataset_id)
+        .order_by(Review.row_index)
+        .all()
+    )
+
+    base_columns = [
+        "Review ID", "Row Index", "Original Review", "Cleaned Review",
+        "Rating", "Review Date", "Source", "Reviewer", "Language",
+    ]
+    removed_columns = base_columns + ["Removal Category", "Removal Reason", "Duplicate Of"]
+    cleaned_rows, removed_rows = [], []
+
+    for review in reviews:
+        flags = review.flags or []
+        if not isinstance(flags, list):
+            flags = []
+        exclusion_flags = [
+            flag for flag in flags
+            if isinstance(flag, dict) and str(flag.get("action", "")).lower() == "excluded"
+        ]
+
+        is_duplicate = bool(review.is_duplicate)
+        is_low_info = bool(review.is_low_info)
+        is_excluded = is_duplicate or is_low_info
+        reasons = []
+        for flag in exclusion_flags:
+            reason = flag.get("reason") or flag.get("message") or flag.get("type")
+            if reason and str(reason) not in reasons:
+                reasons.append(str(reason))
+        if is_duplicate and review.duplicate_of:
+            reason = f"Duplicate of review ID {review.duplicate_of}"
+            if reason not in reasons:
+                reasons.append(reason)
+        if is_duplicate and not any("duplicate" in reason.lower() for reason in reasons):
+            reasons.append("Review identified as a duplicate.")
+        if is_low_info and not any(
+            any(term in reason.lower() for term in ("empty", "low information", "low-information", "insufficient"))
+            for reason in reasons
+        ):
+            reasons.append("Review is empty or contains insufficient useful information.")
+
+        row = {
+            "Review ID": review.id,
+            "Row Index": review.row_index,
+            "Original Review": review.original_text or "",
+            "Cleaned Review": review.cleaned_text or "",
+            "Rating": review.rating,
+            "Review Date": review.review_date or "",
+            "Source": review.source or "",
+            "Reviewer": review.reviewer or "",
+            "Language": review.language or "",
+        }
+        if is_excluded:
+            if is_duplicate and is_low_info:
+                category = "Duplicate and low information"
+            elif is_duplicate:
+                category = "Duplicate"
+            else:
+                category = "Low information / empty review"
+            removed_rows.append({
+                **row,
+                "Removal Category": category,
+                "Removal Reason": "; ".join(reasons),
+                "Duplicate Of": review.duplicate_of or "",
+            })
+        else:
+            cleaned_rows.append(row)
+
+    cleaned_df = pd.DataFrame(cleaned_rows, columns=base_columns)
+    removed_df = pd.DataFrame(removed_rows, columns=removed_columns)
+    excel_buffer = io.BytesIO()
+    with pd.ExcelWriter(excel_buffer, engine="openpyxl") as writer:
+        cleaned_df.to_excel(writer, sheet_name="Cleaned Reviews", index=False)
+        removed_df.to_excel(writer, sheet_name="Removed Reviews", index=False)
+        for worksheet in writer.sheets.values():
+            worksheet.freeze_panes = "A2"
+            worksheet.auto_filter.ref = worksheet.dimensions
+            for column_cells in worksheet.columns:
+                max_length = max(
+                    (len(str(cell.value)) for cell in column_cells if cell.value is not None),
+                    default=10,
+                )
+                worksheet.column_dimensions[column_cells[0].column_letter].width = min(max_length + 2, 55)
+
+    excel_buffer.seek(0)
+    clean_name = re.sub(r"[^\w\-_\. ]", "_", dataset.name or "dataset").strip().replace(" ", "_")
+    return Response(
+        content=excel_buffer.getvalue(),
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f'attachment; filename="alphaev_cleaning_audit_{clean_name}.xlsx"'},
     )
 
 
@@ -229,6 +415,9 @@ def update_review(
         review.is_duplicate = update_data.is_duplicate
     if update_data.flags is not None:
         review.flags = update_data.flags
+
+    if review.dataset:
+        review.dataset.is_stale = True
 
     db.commit()
     db.refresh(review)

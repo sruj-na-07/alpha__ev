@@ -1,32 +1,102 @@
+
 import { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useDropzone } from 'react-dropzone';
-import { Upload, FileSpreadsheet, ArrowRight, AlertCircle, Check, ChevronDown } from 'lucide-react';
+import {
+  UploadCloud,
+  FileSpreadsheet,
+  ArrowRight,
+  Check,
+  ChevronDown,
+  ShieldCheck,
+  Database,
+  FileCheck2,
+  Columns3,
+  Sparkles,
+  RefreshCw,
+  Table2,
+  CircleHelp,
+  CheckCircle2,
+  ArrowLeft,
+  LockKeyhole,
+} from 'lucide-react';
 import toast from 'react-hot-toast';
-import Alphi from '../components/Alphi';
-import { uploadFile, getColumns, mapColumns, type ColumnInfo } from '../api';
+import {
+  uploadFile,
+  getColumns,
+  mapColumns,
+  type ColumnDetectionResponse,
+  type ColumnMappingRequest,
+} from '../api';
 
-const REQUIRED_FIELDS = ['review_text'];
-const OPTIONAL_FIELDS = ['review_id', 'rating', 'date', 'source', 'reviewer', 'location', 'charger_type'];
+interface FieldConfig {
+  key: keyof ColumnMappingRequest;
+  label: string;
+  required: boolean;
+  description: string;
+}
+
+const MAPPING_FIELDS: FieldConfig[] = [
+  {
+    key: 'text_column',
+    label: 'Review Text',
+    required: true,
+    description: 'The main customer review or feedback text',
+  },
+  {
+    key: 'rating_column',
+    label: 'Rating / Score',
+    required: false,
+    description: 'Numeric rating, such as a 1–5 star score',
+  },
+  {
+    key: 'date_column',
+    label: 'Date / Timestamp',
+    required: false,
+    description: 'When the review was submitted',
+  },
+  {
+    key: 'source_column',
+    label: 'Source / Platform',
+    required: false,
+    description: 'Google, App Store, Play Store, etc.',
+  },
+  {
+    key: 'reviewer_column',
+    label: 'Reviewer / Author',
+    required: false,
+    description: 'Customer name or reviewer identifier',
+  },
+];
+
+const STEPS = [
+  { id: 'upload', label: 'Upload file', number: '01' },
+  { id: 'mapping', label: 'Map columns', number: '02' },
+  { id: 'confirm', label: 'Start analysis', number: '03' },
+] as const;
 
 export default function UploadPage() {
   const navigate = useNavigate();
+
   const [file, setFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [datasetId, setDatasetId] = useState<string | null>(null);
-  const [columnInfo, setColumnInfo] = useState<ColumnInfo | null>(null);
+  const [columnInfo, setColumnInfo] =
+    useState<ColumnDetectionResponse | null>(null);
   const [mapping, setMapping] = useState<Record<string, string>>({});
   const [step, setStep] = useState<'upload' | 'mapping' | 'confirm'>('upload');
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     const f = acceptedFiles[0];
     if (!f) return;
-    
+
     const ext = f.name.split('.').pop()?.toLowerCase();
+
     if (!['csv', 'xlsx', 'xls'].includes(ext || '')) {
       toast.error('Please upload a CSV or XLSX file');
       return;
     }
+
     if (f.size > 50 * 1024 * 1024) {
       toast.error('File size must be under 50MB');
       return;
@@ -36,11 +106,22 @@ export default function UploadPage() {
     setUploading(true);
 
     try {
-      const dataset = await uploadFile(f);
-      setDatasetId(dataset.id);
-      const cols = await getColumns(dataset.id);
+      const uploadRes = await uploadFile(f);
+      const newDatasetId = uploadRes.dataset_id;
+      setDatasetId(newDatasetId);
+
+      const cols = await getColumns(newDatasetId);
       setColumnInfo(cols);
-      setMapping(cols.suggested_mapping || {});
+
+      const initialMapping: Record<string, string> = {};
+
+      if (cols.suggested_mapping) {
+        Object.entries(cols.suggested_mapping).forEach(([k, v]) => {
+          if (v) initialMapping[k] = v;
+        });
+      }
+
+      setMapping(initialMapping);
       setStep('mapping');
       toast.success('File uploaded successfully!');
     } catch (err: any) {
@@ -51,40 +132,54 @@ export default function UploadPage() {
     }
   }, []);
 
-  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+  const { getRootProps, getInputProps, isDragActive, open } = useDropzone({
     onDrop,
     accept: {
       'text/csv': ['.csv'],
-      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': ['.xlsx'],
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': [
+        '.xlsx',
+      ],
       'application/vnd.ms-excel': ['.xls'],
     },
     maxFiles: 1,
     disabled: uploading,
+    noClick: true,
   });
 
-  const handleMapColumn = (targetField: string, sourceColumn: string) => {
+  const handleMapColumn = (fieldKey: string, sourceCol: string) => {
     setMapping(prev => {
       const next = { ...prev };
-      if (sourceColumn === '') {
-        delete next[targetField];
+
+      if (!sourceCol) {
+        delete next[fieldKey];
       } else {
-        next[targetField] = sourceColumn;
+        next[fieldKey] = sourceCol;
       }
+
       return next;
     });
   };
 
   const handleConfirmMapping = async () => {
-    if (!mapping.review_text) {
-      toast.error('You must map the review text column');
+    if (!mapping.text_column) {
+      toast.error('You must map the Review Text column');
       return;
     }
+
     if (!datasetId) return;
 
     try {
-      await mapColumns(datasetId, mapping);
+      const req: ColumnMappingRequest = {
+        text_column: mapping.text_column,
+        rating_column: mapping.rating_column || null,
+        date_column: mapping.date_column || null,
+        source_column: mapping.source_column || null,
+        reviewer_column: mapping.reviewer_column || null,
+      };
+
+      await mapColumns(datasetId, req);
       setStep('confirm');
-      toast.success('Column mapping saved');
+      toast.success('Column mapping saved successfully!');
     } catch (err: any) {
       toast.error(err.response?.data?.detail || 'Failed to save mapping');
     }
@@ -96,162 +191,533 @@ export default function UploadPage() {
     }
   };
 
+  const currentStepIndex = STEPS.findIndex(item => item.id === step);
+
+  const formatFileSize = (size: number) => {
+    if (size >= 1024 * 1024) {
+      return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+    }
+    return `${(size / 1024).toFixed(1)} KB`;
+  };
+
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Upload Dataset</h2>
-          <p className="text-gray-500 mt-1">Feed Alphi your EV charging reviews</p>
-        </div>
-        <Alphi mood={uploading ? 'excited' : step === 'confirm' ? 'happy' : 'idle'} size="sm" />
-      </div>
+    <main className="upload-page">
+      <div className="upload-page-inner">
 
-      {/* Step indicators */}
-      <div className="flex items-center gap-2 text-sm">
-        {['Upload File', 'Map Columns', 'Confirm & Process'].map((label, i) => {
-          const stepNames = ['upload', 'mapping', 'confirm'];
-          const currentIdx = stepNames.indexOf(step);
-          const isActive = i === currentIdx;
-          const isDone = i < currentIdx;
-          return (
-            <div key={label} className="flex items-center gap-2">
-              {i > 0 && <div className={`w-8 h-0.5 ${isDone ? 'bg-teal-500' : 'bg-gray-200'}`} />}
-              <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${isActive ? 'bg-teal-100 text-teal-700' : isDone ? 'bg-teal-500 text-white' : 'bg-gray-100 text-gray-400'}`}>
-                {isDone ? <Check size={12} /> : <span>{i + 1}</span>}
-                {label}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Upload step */}
-      {step === 'upload' && (
-        <div className="card">
-          <div
-            {...getRootProps()}
-            className={`border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-              isDragActive ? 'border-teal-400 bg-teal-50' : 'border-gray-200 hover:border-teal-300 hover:bg-gray-50'
-            } ${uploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-          >
-            <input {...getInputProps()} />
-            <div className="flex flex-col items-center gap-3">
-              {uploading ? (
-                <>
-                  <Alphi mood="excited" size="md" message="Alphi is munching on your data... 🐱" />
-                  <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
-                    <div className="h-full bg-teal-500 rounded-full animate-pulse" style={{ width: '60%' }} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <Upload size={40} className="text-gray-300" />
-                  <div>
-                    <p className="text-lg font-medium text-gray-700">
-                      {isDragActive ? 'Drop your file here!' : 'Drag & drop your CSV or XLSX file'}
-                    </p>
-                    <p className="text-sm text-gray-400 mt-1">or click to browse · Max 50MB</p>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-
-          {file && !uploading && (
-            <div className="mt-4 flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
-              <FileSpreadsheet size={20} className="text-teal-600" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-700 truncate">{file.name}</p>
-                <p className="text-xs text-gray-400">{(file.size / 1024).toFixed(1)} KB</p>
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Mapping step */}
-      {step === 'mapping' && columnInfo && (
-        <div className="card space-y-6">
+        {/* Header */}
+        <header className="upload-header">
           <div>
-            <h3 className="font-semibold text-gray-900 mb-1">Map Your Columns</h3>
-            <p className="text-sm text-gray-500">Tell Alphi which column contains which data. Only review text is required.</p>
+            <div className="upload-eyebrow">
+              <span className="upload-eyebrow-dot" />
+              ALPHAEV DATA WORKSPACE
+            </div>
+
+            <h1 className="upload-heading">
+              Bring your data.
+              <span> Find the signal.</span>
+            </h1>
+
+            <p className="upload-subheading">
+              Import EV charging reviews and transform customer feedback
+              into structured, explainable intelligence.
+            </p>
           </div>
 
-          <div className="space-y-3">
-            {[...REQUIRED_FIELDS, ...OPTIONAL_FIELDS].map(field => (
-              <div key={field} className="flex items-center gap-4">
-                <div className="w-40 flex items-center gap-1">
-                  <span className="text-sm font-medium text-gray-700 capitalize">{field.replace(/_/g, ' ')}</span>
-                  {REQUIRED_FIELDS.includes(field) && <span className="text-red-400 text-xs">*</span>}
+          <div className="upload-header-note">
+            <div className="upload-header-note-icon">
+              <ShieldCheck size={18} />
+            </div>
+            <div>
+              <strong>Secure data intake</strong>
+              <span>Structured for analysis</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Workflow */}
+        <section className="upload-workflow">
+          <div className="upload-workflow-top">
+            <span className="upload-section-label">YOUR WORKFLOW</span>
+            <span className="upload-step-count">
+              STEP {currentStepIndex + 1} OF 3
+            </span>
+          </div>
+
+          <div className="upload-step-track">
+            {STEPS.map((item, index) => {
+              const isActive = index === currentStepIndex;
+              const isDone = index < currentStepIndex;
+
+              return (
+                <div
+                  key={item.id}
+                  className={`upload-step ${
+                    isActive ? 'is-active' : ''
+                  } ${isDone ? 'is-complete' : ''}`}
+                >
+                  <div className="upload-step-number">
+                    {isDone ? <Check size={15} /> : item.number}
+                  </div>
+
+                  <div className="upload-step-copy">
+                    <span>{item.label}</span>
+                    <small>
+                      {isDone
+                        ? 'Completed'
+                        : isActive
+                        ? 'In progress'
+                        : 'Up next'}
+                    </small>
+                  </div>
+
+                  {index !== STEPS.length - 1 && (
+                    <div
+                      className={`upload-step-connector ${
+                        isDone ? 'is-complete' : ''
+                      }`}
+                    />
+                  )}
                 </div>
-                <div className="relative flex-1">
-                  <select
-                    value={mapping[field] || ''}
-                    onChange={e => handleMapColumn(field, e.target.value)}
-                    className="input-field appearance-none pr-8"
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Main content */}
+        <div className="upload-main-layout">
+          <section className="upload-main-panel">
+
+            {/* STEP 1: UPLOAD */}
+            {step === 'upload' && (
+              <>
+                <div className="upload-panel-heading">
+                  <div>
+                    <div className="upload-panel-kicker">
+                      <Database size={14} />
+                      DATASET IMPORT
+                    </div>
+
+                    <h2>Upload your dataset</h2>
+
+                    <p>
+                      Start with a CSV or Excel file containing EV charging
+                      reviews.
+                    </p>
+                  </div>
+
+                  <div className="upload-heading-index">01 / 03</div>
+                </div>
+
+                <div
+                  {...getRootProps()}
+                  className={`upload-dropzone ${
+                    isDragActive ? 'is-dragging' : ''
+                  } ${uploading ? 'is-uploading' : ''}`}
+                >
+                  <input {...getInputProps()} />
+
+                  {uploading ? (
+                    <div className="upload-progress-content">
+                      <div className="upload-progress-icon">
+                        <RefreshCw size={27} className="upload-spin" />
+                      </div>
+
+                      <h3>Preparing your dataset</h3>
+
+                      <p>
+                        Uploading your file and detecting its columns.
+                        This may take a moment.
+                      </p>
+
+                      <div className="upload-progress-track">
+                        <div className="upload-progress-bar" />
+                      </div>
+
+                      <span className="upload-progress-caption">
+                        PROCESSING FILE
+                      </span>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="upload-dropzone-decoration">
+                        <span />
+                        <span />
+                        <span />
+                      </div>
+
+                      <div className="upload-cloud-icon">
+                        <UploadCloud size={31} strokeWidth={1.6} />
+                      </div>
+
+                      <h3>
+                        {isDragActive
+                          ? 'Drop your dataset here'
+                          : 'Drag and drop your dataset'}
+                      </h3>
+
+                      <p className="upload-dropzone-description">
+                        or browse files from your computer
+                      </p>
+
+                      <button
+                        type="button"
+                        className="upload-browse-button"
+                        onClick={open}
+                      >
+                        Browse files
+                        <ArrowRight size={16} />
+                      </button>
+
+                      <div className="upload-file-types">
+                        <span>CSV</span>
+                        <span>XLSX</span>
+                        <span>XLS</span>
+                        <i />
+                        <span>Maximum file size: 50 MB</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="upload-security-line">
+                  <LockKeyhole size={14} />
+                  <span>
+                    Your dataset is uploaded directly to the AlphaEV
+                    processing pipeline.
+                  </span>
+                </div>
+              </>
+            )}
+
+            {/* STEP 2: COLUMN MAPPING */}
+            {step === 'mapping' && columnInfo && (
+              <>
+                <div className="upload-panel-heading">
+                  <div>
+                    <div className="upload-panel-kicker">
+                      <Columns3 size={14} />
+                      DATA STRUCTURE
+                    </div>
+
+                    <h2>Map your columns</h2>
+
+                    <p>
+                      Match your dataset fields to the information AlphaEV
+                      needs. Review Text is the only required field.
+                    </p>
+                  </div>
+
+                  <div className="upload-heading-index">02 / 03</div>
+                </div>
+
+                {file && (
+                  <div className="upload-selected-file">
+                    <div className="upload-selected-file-icon">
+                      <FileSpreadsheet size={20} />
+                    </div>
+
+                    <div className="upload-selected-file-info">
+                      <strong>{file.name}</strong>
+                      <span>{formatFileSize(file.size)} · Uploaded</span>
+                    </div>
+
+                    <CheckCircle2
+                      size={19}
+                      className="upload-file-success"
+                    />
+                  </div>
+                )}
+
+                <div className="upload-mapping-intro">
+                  <div>
+                    <strong>Detected dataset fields</strong>
+                    <span>
+                      {columnInfo.columns.length} columns identified
+                    </span>
+                  </div>
+
+                  <div className="upload-detected-badge">
+                    <Sparkles size={13} />
+                    Auto-detected
+                  </div>
+                </div>
+
+                <div className="upload-mapping-list">
+                  {MAPPING_FIELDS.map(field => {
+                    const isMapped = Boolean(mapping[field.key]);
+
+                    return (
+                      <div
+                        key={field.key}
+                        className={`upload-mapping-row ${
+                          isMapped ? 'is-mapped' : ''
+                        }`}
+                      >
+                        <div className="upload-mapping-field">
+                          <div className="upload-mapping-field-title">
+                            <span>{field.label}</span>
+
+                            {field.required ? (
+                              <span className="upload-required">
+                                REQUIRED
+                              </span>
+                            ) : (
+                              <span className="upload-optional">
+                                OPTIONAL
+                              </span>
+                            )}
+                          </div>
+
+                          <p>{field.description}</p>
+                        </div>
+
+                        <div className="upload-select-wrap">
+                          <select
+                            value={mapping[field.key] || ''}
+                            onChange={e =>
+                              handleMapColumn(field.key, e.target.value)
+                            }
+                          >
+                            <option value="">Not mapped</option>
+
+                            {columnInfo.columns.map(col => (
+                              <option key={col} value={col}>
+                                {col}
+                              </option>
+                            ))}
+                          </select>
+
+                          <ChevronDown size={16} />
+                        </div>
+
+                        <div className="upload-mapping-status">
+                          {isMapped ? (
+                            <CheckCircle2 size={17} />
+                          ) : field.required ? (
+                            <CircleHelp size={17} />
+                          ) : (
+                            <span>—</span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                {/* Preview */}
+                {columnInfo.sample_preview &&
+                  columnInfo.sample_preview.length > 0 && (
+                    <div className="upload-preview-section">
+                      <div className="upload-preview-heading">
+                        <div>
+                          <div className="upload-preview-title">
+                            <Table2 size={16} />
+                            Sample data preview
+                          </div>
+                          <p>Review a sample of your uploaded records.</p>
+                        </div>
+
+                        <span>
+                          {Math.min(
+                            columnInfo.sample_preview.length,
+                            5
+                          )}{' '}
+                          ROWS
+                        </span>
+                      </div>
+
+                      <div className="upload-preview-table-wrap">
+                        <table className="upload-preview-table">
+                          <thead>
+                            <tr>
+                              {columnInfo.columns.map(col => (
+                                <th key={col}>{col}</th>
+                              ))}
+                            </tr>
+                          </thead>
+
+                          <tbody>
+                            {columnInfo.sample_preview
+                              .slice(0, 5)
+                              .map((row, i) => (
+                                <tr key={i}>
+                                  {columnInfo.columns.map(col => (
+                                    <td key={col} title={String(row[col] ?? '')}>
+                                      {String(row[col] ?? '')}
+                                    </td>
+                                  ))}
+                                </tr>
+                              ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                <div className="upload-mapping-footer">
+                  <button
+                    onClick={() => setStep('upload')}
+                    className="upload-back-button"
                   >
-                    <option value="">— Not mapped —</option>
-                    {columnInfo.columns.map(col => (
-                      <option key={col} value={col}>{col}</option>
-                    ))}
-                  </select>
-                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    <ArrowLeft size={16} />
+                    Back
+                  </button>
+
+                  <button
+                    onClick={handleConfirmMapping}
+                    className="upload-continue-button"
+                  >
+                    Confirm mapping
+                    <ArrowRight size={16} />
+                  </button>
+                </div>
+              </>
+            )}
+
+            {/* STEP 3: CONFIRM */}
+            {step === 'confirm' && (
+              <div className="upload-confirm-content">
+                <div className="upload-confirm-icon">
+                  <FileCheck2 size={34} strokeWidth={1.5} />
+                </div>
+
+                <div className="upload-panel-kicker">
+                  <CheckCircle2 size={14} />
+                  CONFIGURATION COMPLETE
+                </div>
+
+                <h2>Your dataset is ready.</h2>
+
+                <p>
+                  Your file has been uploaded and its columns have been
+                  mapped successfully. You can now begin the cleaning
+                  process.
+                </p>
+
+                {file && (
+                  <div className="upload-confirm-file">
+                    <div className="upload-selected-file-icon">
+                      <FileSpreadsheet size={20} />
+                    </div>
+
+                    <div className="upload-selected-file-info">
+                      <strong>{file.name}</strong>
+                      <span>{formatFileSize(file.size)}</span>
+                    </div>
+
+                    <CheckCircle2
+                      size={19}
+                      className="upload-file-success"
+                    />
+                  </div>
+                )}
+
+                <div className="upload-confirm-details">
+                  <div>
+                    <CheckCircle2 size={16} />
+                    File successfully uploaded
+                  </div>
+                  <div>
+                    <CheckCircle2 size={16} />
+                    Column mapping saved
+                  </div>
+                  <div>
+                    <CheckCircle2 size={16} />
+                    Required review text field configured
+                  </div>
+                </div>
+
+                <button
+                  onClick={handleStartPipeline}
+                  className="upload-continue-button upload-start-button"
+                >
+                  Start data cleaning
+                  <ArrowRight size={18} />
+                </button>
+
+                <span className="upload-confirm-footnote">
+                  NEXT: DATA CLEANING & QUALITY INSPECTION
+                </span>
+              </div>
+            )}
+          </section>
+
+          {/* Right information panel */}
+          <aside className="upload-side-panel">
+            <div className="upload-side-top">
+              <span className="upload-side-label">ALPHAEV / DATA INTELLIGENCE</span>
+
+              <div className="upload-side-visual">
+                <div className="upload-visual-orbit upload-orbit-one" />
+                <div className="upload-visual-orbit upload-orbit-two" />
+                <div className="upload-visual-center">
+                  <Database size={28} strokeWidth={1.4} />
+                </div>
+                <span className="upload-visual-node node-one" />
+                <span className="upload-visual-node node-two" />
+                <span className="upload-visual-node node-three" />
+              </div>
+
+              <h3>
+                From raw reviews
+                <br />
+                to meaningful insight.
+              </h3>
+
+              <p>
+                AlphaEV organises unstructured EV charging feedback into
+                evidence-backed intelligence.
+              </p>
+            </div>
+
+            <div className="upload-side-divider" />
+
+            <div className="upload-side-capabilities">
+              <span className="upload-side-label">WHAT HAPPENS NEXT</span>
+
+              <div className="upload-capability">
+                <div className="upload-capability-icon">
+                  <FileCheck2 size={17} />
+                </div>
+                <div>
+                  <strong>Data cleaning</strong>
+                  <span>Inspect and prepare raw reviews</span>
                 </div>
               </div>
-            ))}
-          </div>
 
-          {/* Preview */}
-          {columnInfo.sample_rows.length > 0 && (
-            <div>
-              <h4 className="text-sm font-medium text-gray-700 mb-2">Data Preview</h4>
-              <div className="overflow-x-auto rounded-xl border border-gray-200">
-                <table className="w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      {columnInfo.columns.map(col => (
-                        <th key={col} className="px-3 py-2 text-left font-medium text-gray-600 whitespace-nowrap">{col}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {columnInfo.sample_rows.slice(0, 5).map((row, i) => (
-                      <tr key={i} className="border-t border-gray-100">
-                        {columnInfo.columns.map(col => (
-                          <td key={col} className="px-3 py-2 text-gray-700 max-w-[200px] truncate">{String(row[col] ?? '')}</td>
-                        ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+              <div className="upload-capability">
+                <div className="upload-capability-icon">
+                  <Columns3 size={17} />
+                </div>
+                <div>
+                  <strong>Aspect classification</strong>
+                  <span>Identify key EV experience topics</span>
+                </div>
+              </div>
+
+              <div className="upload-capability">
+                <div className="upload-capability-icon">
+                  <Sparkles size={17} />
+                </div>
+                <div>
+                  <strong>Explainable intelligence</strong>
+                  <span>Explore patterns and customer sentiment</span>
+                </div>
               </div>
             </div>
-          )}
 
-          <div className="flex justify-end gap-3">
-            <button onClick={() => setStep('upload')} className="btn-secondary">Back</button>
-            <button onClick={handleConfirmMapping} className="btn-primary flex items-center gap-2">
-              Confirm Mapping <ArrowRight size={16} />
-            </button>
-          </div>
+            <div className="upload-side-footer">
+              <span className="upload-side-footer-dot" />
+              BUILT FOR EV REVIEW INTELLIGENCE
+            </div>
+          </aside>
         </div>
-      )}
 
-      {/* Confirm step */}
-      {step === 'confirm' && (
-        <div className="card text-center py-10">
-          <Alphi mood="excited" size="lg" message="Ready to analyze your reviews! Let's go! 🚀" />
-          <div className="mt-6 space-y-3">
-            <p className="text-gray-600">
-              <strong>{file?.name}</strong> uploaded with column mapping configured.
-            </p>
-            <button onClick={handleStartPipeline} className="btn-primary text-lg px-8 py-3 inline-flex items-center gap-2 group">
-              Start Cleaning
-              <ArrowRight size={20} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-        </div>
-      )}
-    </div>
+        <footer className="upload-page-footer">
+          <span>ALPHAEV</span>
+          <span>EXPLAINABLE AI-POWERED EV REVIEW INTELLIGENCE</span>
+        </footer>
+      </div>
+    </main>
   );
 }

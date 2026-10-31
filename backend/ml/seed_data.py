@@ -1,154 +1,143 @@
 """
 Seed training dataset for AlphaEV aspect-based sentiment and polarity classification.
-Covers all 11 aspects with both positive and negative polarities (22 classes).
+Covers all 10 EV charging-station aspects with positive and negative polarities (20 classes).
 """
 
 SEED_DATA = [
-    # Range & Battery - Positive
-    ("The battery range easily exceeds 300 miles on the highway, very minimal degradation after 20k miles.", ["range_battery:pos"]),
-    ("Great efficiency and battery life! The EPA estimate is conservative, I consistently get 320 miles.", ["range_battery:pos"]),
-    ("Battery health has remained at 98% even with daily DC fast charging, outstanding battery technology.", ["range_battery:pos"]),
-    ("Outstanding real-world range even in chilly winter conditions, the heat pump keeps the battery warm.", ["range_battery:pos"]),
+    # 1. Pricing
+    ("The charging price is affordable and reasonable compared to other stations.", ["pricing:pos"]),
+    ("Very good value for money with transparent charging tariffs.", ["pricing:pos"]),
+    ("The rates are clearly displayed before starting a charging session.", ["pricing:pos"]),
+    ("Affordable charging costs make this station a good choice for daily use.", ["pricing:pos"]),
 
-    # Range & Battery - Negative
-    ("Severe battery degradation after only one year, lost nearly 25% of maximum range capacity.", ["range_battery:neg"]),
-    ("The winter range is horrific, drops by 45% as soon as temperatures hit freezing.", ["range_battery:neg"]),
-    ("Phantom battery drain drains 10 miles of charge overnight while parked in the driveway.", ["range_battery:neg"]),
-    ("Stated range is an absolute lie, barely getting 180 miles instead of advertised 300.", ["range_battery:neg"]),
+    ("Charging is too expensive compared to nearby charging stations.", ["pricing:neg"]),
+    ("The app shows one price but charges a higher amount after the session.", ["pricing:neg"]),
+    ("Hidden fees make the total charging cost unnecessarily high.", ["pricing:neg"]),
+    ("The per-unit charging rate is unreasonable and needs to be reduced.", ["pricing:neg"]),
 
-    # Charging - Positive
-    ("Charges from 10% to 80% in 18 minutes flat at 350kW CCS stations, super fast charging speed.", ["charging:pos"]),
-    ("Tesla Supercharger network access has made road trips effortless and reliable with zero queue.", ["charging:pos"]),
-    ("Seamless plug and charge experience, handles 250kW peak rate effortlessly without throttling.", ["charging:pos"]),
-    ("Home Level 2 charging is fast and cost-effective, ready every morning.", ["charging:pos"]),
+    # 2. Payment Issues
+    ("UPI payment worked instantly and the charging session started without problems.", ["payment_issues:pos"]),
+    ("The payment process is smooth and supports multiple payment methods.", ["payment_issues:pos"]),
+    ("Payment confirmation arrived immediately and the receipt was accurate.", ["payment_issues:pos"]),
+    ("The wallet balance and transaction history are updated correctly.", ["payment_issues:pos"]),
 
-    # Charging - Negative
-    ("Charging stations are broken half the time and the charge speed throttles below 40kW.", ["charging:neg"]),
-    ("The CCS connector got stuck in the port and charging failed three times at Electrify America.", ["charging:neg"]),
-    ("Painfully slow charging curve, takes over an hour to go from 20% to 80% on fast chargers.", ["charging:neg"]),
-    ("Constant communication errors with public chargers, refused to initiate session.", ["charging:neg"]),
+    ("My UPI payment failed but the money was deducted from my bank account.", ["payment_issues:neg"]),
+    ("The app deducted money twice for the same charging session.", ["payment_issues:neg"]),
+    ("I have not received my refund even after several days.", ["payment_issues:neg"]),
+    ("Payment errors prevent me from starting a charging session.", ["payment_issues:neg"]),
 
-    # Performance - Positive
-    ("Instant torque and mind-blowing acceleration, 0-60 in 3.1 seconds pushes you into the seat.", ["performance:pos"]),
-    ("Incredible handling through corners, low center of gravity makes it feel glued to the road.", ["performance:pos"]),
-    ("Regenerative braking is tuned perfectly for smooth true one-pedal driving in city traffic.", ["performance:pos"]),
-    ("Effortless passing power on the highway and razor-sharp steering dynamics.", ["performance:pos"]),
+    # 3. Charging Speed
+    ("The charger delivers fast charging and fills the battery quickly.", ["charging_speed:pos"]),
+    ("Charging speed is excellent and the power output remains consistent.", ["charging_speed:pos"]),
+    ("My vehicle charged quickly without unexpected speed drops.", ["charging_speed:pos"]),
+    ("The fast charger reduced my charging time considerably.", ["charging_speed:pos"]),
 
-    # Performance - Negative
-    ("Mushy brake feel and alarming understeer when pushed in tight corners.", ["performance:neg"]),
-    ("The regenerative braking feels jerky and cannot be adjusted, causes motion sickness.", ["performance:neg"]),
-    ("Acceleration feels sluggish after 60 mph, lacks top-end highway passing punch.", ["performance:neg"]),
-    ("Noticeable motor whining noise and heavy feeling around curves.", ["performance:neg"]),
+    ("Charging is extremely slow even when the charger is rated for fast charging.", ["charging_speed:neg"]),
+    ("The charging speed keeps dropping and takes too long to charge the vehicle.", ["charging_speed:neg"]),
+    ("The charger delivers much less power than expected.", ["charging_speed:neg"]),
+    ("A short charging session takes far longer than it should.", ["charging_speed:neg"]),
 
-    # Software & Infotainment - Positive
-    ("The touchscreen is butter smooth and the navigation with EV route planning is flawless.", ["software_infotainment:pos"]),
-    ("Regular OTA updates keep adding fantastic features, Apple CarPlay works wirelessly without hitch.", ["software_infotainment:pos"]),
-    ("Intuitive user interface with snappy response and clear crisp graphics on the infotainment.", ["software_infotainment:pos"]),
-    ("The companion phone app is lightning fast at waking the vehicle and setting climate controls.", ["software_infotainment:pos"]),
+    # 4. Reliability
+    ("The charging station works consistently and every session starts successfully.", ["reliability:pos"]),
+    ("The charger has been dependable during all my visits.", ["reliability:pos"]),
+    ("The station operates reliably without unexpected interruptions.", ["reliability:pos"]),
+    ("Charging completed successfully without technical errors.", ["reliability:pos"]),
 
-    # Software & Infotainment - Negative
-    ("The infotainment screen freezes constantly and rebooted twice while driving on highway.", ["software_infotainment:neg"]),
-    ("Software is full of annoying bugs, Bluetooth disconnects every 10 minutes and no CarPlay.", ["software_infotainment:neg"]),
-    ("Laggy touch response and sluggish navigation system that cannot calculate accurate routes.", ["software_infotainment:neg"]),
-    ("Terrible mobile app that always fails to connect to the vehicle remotely.", ["software_infotainment:neg"]),
+    ("The charger repeatedly stops working in the middle of a session.", ["reliability:neg"]),
+    ("The charging station frequently shows errors and fails to start charging.", ["reliability:neg"]),
+    ("The connector disconnects repeatedly and interrupts charging.", ["reliability:neg"]),
+    ("This station is unreliable because it frequently goes out of service.", ["reliability:neg"]),
 
-    # Interior & Comfort - Positive
-    ("Whisper quiet cabin at 75 mph with zero wind noise and exceptionally comfortable ergonomic seats.", ["interior_comfort:pos"]),
-    ("The suspension absorbs potholes like a luxury limousine, very smooth ride quality.", ["interior_comfort:pos"]),
-    ("Premium materials throughout the interior, supportive heated and ventilated seating.", ["interior_comfort:pos"]),
-    ("Excellent dual-zone HVAC system and effective heated steering wheel for winter mornings.", ["interior_comfort:pos"]),
+    # 5. Waiting Time
+    ("There was no queue and I could start charging immediately.", ["waiting_time:pos"]),
+    ("The waiting time was minimal even during a busy period.", ["waiting_time:pos"]),
+    ("I was able to access the charger without any delay.", ["waiting_time:pos"]),
+    ("Quick access to the charging point saved me a lot of time.", ["waiting_time:pos"]),
 
-    # Interior & Comfort - Negative
-    ("Cheap scratchy plastic all over the cabin, feels like a budget economy car on the inside.", ["interior_comfort:neg"]),
-    ("Stiff and harsh suspension, every minor bump and expansion joint shakes the entire car.", ["interior_comfort:neg"]),
-    ("Excessive road noise and tire roar penetrate the interior at highway speeds.", ["interior_comfort:neg"]),
-    ("The front seats offer zero lumbar support and become painful after just an hour of driving.", ["interior_comfort:neg"]),
+    ("I waited for more than an hour before a charger became available.", ["waiting_time:neg"]),
+    ("Long queues at this station waste too much time.", ["waiting_time:neg"]),
+    ("Other vehicles were occupying the chargers and the wait was frustrating.", ["waiting_time:neg"]),
+    ("The delay before starting my charging session was unacceptable.", ["waiting_time:neg"]),
 
-    # Build Quality - Positive
-    ("Flawless paint finish and laser-tight panel gaps everywhere, rock solid build quality.", ["build_quality:pos"]),
-    ("No squeaks, rattles, or loose trims even over rough gravel roads, exemplary fit and finish.", ["build_quality:pos"]),
-    ("Doors close with a reassuring solid thud and weather seals are completely watertight.", ["build_quality:pos"]),
-    ("Robust exterior hardware and paint that has resisted rock chips exceptionally well.", ["build_quality:pos"]),
+    # 6. App Usability
+    ("The app is easy to use and finding charging stations is straightforward.", ["app_usability:pos"]),
+    ("The interface is simple and starting a charging session is convenient.", ["app_usability:pos"]),
+    ("The app clearly displays charging status and session details.", ["app_usability:pos"]),
+    ("The app runs smoothly and makes managing charging sessions easy.", ["app_usability:pos"]),
 
-    # Build Quality - Negative
-    ("Disastrous panel gaps, misaligned trunk lid, and loose rubber seals around the windows.", ["build_quality:neg"]),
-    ("Rattles and squeaks coming from the dashboard and B-pillar within the first 1,000 miles.", ["build_quality:neg"]),
-    ("Thin peeling clear coat and orange peel paint defects straight from the factory.", ["build_quality:neg"]),
-    ("Water leaks into the taillight housing every time it rains.", ["build_quality:neg"]),
+    ("The app keeps crashing whenever I try to start charging.", ["app_usability:neg"]),
+    ("The interface is confusing and it is difficult to find basic options.", ["app_usability:neg"]),
+    ("The app shows incorrect charging status and does not update properly.", ["app_usability:neg"]),
+    ("Login problems and app errors make the charging process frustrating.", ["app_usability:neg"]),
 
-    # Safety & Driver Assistance - Positive
-    ("Adaptive cruise control and lane centering work seamlessly in heavy rush-hour traffic.", ["safety_driver_assist:pos"]),
-    ("The blind spot cameras and 360-degree overhead parking view make maneuvering effortless.", ["safety_driver_assist:pos"]),
-    ("Forward collision warning avoided a rear-end collision, five-star crash test security.", ["safety_driver_assist:pos"]),
-    ("Highway driver assist steers smoothly without bouncing between lane markings.", ["safety_driver_assist:pos"]),
+    # 7. Availability
+    ("Chargers are available whenever I visit this station.", ["availability:pos"]),
+    ("There are enough operational charging points for customers.", ["availability:pos"]),
+    ("The station has multiple working chargers and is easy to access.", ["availability:pos"]),
+    ("I could find an available charging point without any difficulty.", ["availability:pos"]),
 
-    # Safety & Driver Assistance - Negative
-    ("Terrifying phantom braking on empty highway stretches while using driver assist.", ["safety_driver_assist:neg"]),
-    ("Lane keep assist aggressively yanks the steering wheel towards concrete barriers.", ["safety_driver_assist:neg"]),
-    ("Blind spot monitoring sensors frequently trigger false alarms in rain.", ["safety_driver_assist:neg"]),
-    ("Driver monitoring camera is overly sensitive, constantly beeps even when looking forward.", ["safety_driver_assist:neg"]),
+    ("All chargers were occupied when I arrived.", ["availability:neg"]),
+    ("The station is listed in the app but the chargers are out of service.", ["availability:neg"]),
+    ("There are too few charging points available at this location.", ["availability:neg"]),
+    ("The app shows a charger as available even though it is not operational.", ["availability:neg"]),
 
-    # Price & Value - Positive
-    ("Incredible value for money when factoring in the $7,500 federal EV tax credit.", ["price_value:pos"]),
-    ("Total cost of ownership is tiny compared to gas, saved thousands on fuel and maintenance.", ["price_value:pos"]),
-    ("Generous standard equipment package for the price point, undercuts competitors by $10k.", ["price_value:pos"]),
-    ("Resale value has held remarkably well over two years of ownership.", ["price_value:pos"]),
+    # 8. Location Convenience
+    ("The charging station is conveniently located near the main road.", ["location_convenience:pos"]),
+    ("The station is easy to reach and close to useful shops.", ["location_convenience:pos"]),
+    ("The location is convenient for charging during my daily commute.", ["location_convenience:pos"]),
+    ("Clear directions make the charging station easy to find.", ["location_convenience:pos"]),
 
-    # Price & Value - Negative
-    ("Grossly overpriced for what you get, missing basic features found in cheaper vehicles.", ["price_value:neg"]),
-    ("Depreciation is catastrophic, lost 40% of its sticker price in just 18 months.", ["price_value:neg"]),
-    ("Hidden subscription fees for heated seats and navigation make it feel like highway robbery.", ["price_value:neg"]),
-    ("Insurance premiums are outrageously expensive compared to equivalent gasoline cars.", ["price_value:neg"]),
+    ("The charging station is far away from the main road and difficult to reach.", ["location_convenience:neg"]),
+    ("The location is inconvenient and requires a long detour.", ["location_convenience:neg"]),
+    ("Poor directions make it difficult to find the charging point.", ["location_convenience:neg"]),
+    ("There are no convenient charging locations in this area.", ["location_convenience:neg"]),
 
-    # Customer Service - Positive
-    ("Service center appointment was prompt, friendly staff, and got a free loaner vehicle.", ["customer_service:pos"]),
-    ("Mobile service tech arrived at my driveway and replaced the 12V battery within 20 minutes.", ["customer_service:pos"]),
-    ("Warranty claim on the AC compressor was approved instantly without any hassle.", ["customer_service:pos"]),
-    ("Attentive customer support team who kept me updated through every step of delivery.", ["customer_service:pos"]),
+    # 9. Improvement Suggestion
+    ("Please add more charging points to reduce congestion.", ["improvement_suggestion:pos"]),
+    ("The service could be improved by providing more payment options.", ["improvement_suggestion:pos"]),
+    ("I suggest adding live charger availability updates to the app.", ["improvement_suggestion:pos"]),
+    ("Please provide better seating and shelter while customers charge.", ["improvement_suggestion:pos"]),
 
-    # Customer Service - Negative
-    ("Horrendous customer service, waited three weeks just to get a diagnostic appointment.", ["customer_service:neg"]),
-    ("The dealership refused to honor the warranty and blamed me for the motor failure.", ["customer_service:neg"]),
-    ("Car sat at the service center for two months waiting on a simple replacement part.", ["customer_service:neg"]),
-    ("Impossible to reach a human on the phone, service tickets get closed without resolution.", ["customer_service:neg"]),
+    ("The company should reduce charging prices and remove hidden fees.", ["improvement_suggestion:neg"]),
+    ("Please fix the frequent payment failures and refund delays.", ["improvement_suggestion:neg"]),
+    ("They need to improve charger maintenance and reliability.", ["improvement_suggestion:neg"]),
+    ("The app needs a better interface and more accurate station information.", ["improvement_suggestion:neg"]),
 
-    # Reliability - Positive
-    ("100,000 trouble-free miles with zero mechanical failures, absolute peak reliability.", ["reliability:pos"]),
-    ("Turn-key reliability every single morning, never stranded or triggered a warning light.", ["reliability:pos"]),
-    ("Durable powertrain and dependable electronics that withstand extreme temperatures.", ["reliability:pos"]),
-    ("Has proven far more reliable than any German luxury vehicle I've owned previously.", ["reliability:pos"]),
+    # 10. Overall Experience
+    ("Overall, I had an excellent experience using this charging station.", ["overall_experience:pos"]),
+    ("The charging service was convenient and I am satisfied with my visit.", ["overall_experience:pos"]),
+    ("Everything went smoothly and I would recommend this station to others.", ["overall_experience:pos"]),
+    ("A pleasant charging experience with helpful facilities and smooth service.", ["overall_experience:pos"]),
 
-    # Reliability - Negative
-    ("Left me completely stranded on the highway with 'Electrical System Fault' at 5,000 miles.", ["reliability:neg"]),
-    ("Constant breakdowns and error codes, car has been in the shop four times in six months.", ["reliability:neg"]),
-    ("The 12V battery died unexpectedly and bricked the entire car in my garage.", ["reliability:neg"]),
-    ("Major drive unit failure required a full powertrain replacement under 15k miles.", ["reliability:neg"]),
+    ("Overall, this was a frustrating and disappointing charging experience.", ["overall_experience:neg"]),
+    ("I am dissatisfied with the service and would avoid this station.", ["overall_experience:neg"]),
+    ("The entire charging experience was inconvenient and poorly managed.", ["overall_experience:neg"]),
+    ("I would not recommend this charging network because of my experience.", ["overall_experience:neg"]),
+        # Customer Support - Positive
+    ("Customer support responded quickly and resolved my charging issue.", ["customer_support:pos"]),
+    ("The support team was helpful when I faced a problem starting my charging session.", ["customer_support:pos"]),
+    ("Customer care provided clear instructions and helped me complete the payment.", ["customer_support:pos"]),
+    ("The support team followed up on my complaint and resolved it promptly.", ["customer_support:pos"]),
 
-    # Space & Practicality - Positive
-    ("Enormous cargo room with the deep trunk and huge front trunk (frunk) for dirty gear.", ["space_practicality:pos"]),
-    ("Plenty of legroom and headroom in the rear seats for tall adults, great family road-tripper.", ["space_practicality:pos"]),
-    ("Clever center console storage and completely flat rear floor make it super versatile.", ["space_practicality:pos"]),
-    ("Fold-flat rear seats easily accommodate two full-size bicycles without removing wheels.", ["space_practicality:pos"]),
-
-    # Space & Practicality - Negative
-    ("Rear passenger legroom is cramped and the sloping roofline severely cuts into headroom.", ["space_practicality:neg"]),
-    ("Tiny trunk opening with no underfloor storage and completely lacks a front trunk.", ["space_practicality:neg"]),
-    ("Very few cup holders or cubbies for phones, cabin storage design is poorly thought out.", ["space_practicality:neg"]),
-    ("Impractical rear visibility due to tiny rear glass, difficult to carry bulky luggage.", ["space_practicality:neg"]),
+    #11. Customer Support - Negative
+    ("Customer support never responded to my complaint about the charging station.", ["customer_support:neg"]),
+    ("I contacted customer care several times but nobody resolved my issue.", ["customer_support:neg"]),
+    ("The support team was unhelpful when my payment was deducted but charging did not start.", ["customer_support:neg"]),
+    ("My complaint about the faulty charger remains unresolved despite repeated calls.", ["customer_support:neg"]),
 ]
 
 ASPECT_DISPLAY_NAMES = {
-    "range_battery": "Battery & Range",
-    "charging": "Charging & Infrastructure",
-    "performance": "Performance & Handling",
-    "software_infotainment": "Software & Infotainment",
-    "interior_comfort": "Interior & Comfort",
-    "build_quality": "Build Quality & Exterior",
-    "safety_driver_assist": "Safety & Driver Assistance",
-    "price_value": "Price & Value",
-    "customer_service": "Customer Service & Warranty",
-    "reliability": "Reliability & Durability",
-    "space_practicality": "Space & Practicality",
+    "pricing": "Pricing",
+    "payment_issues": "Payment Issues",
+    "charging_speed": "Charging Speed",
+    "reliability": "Reliability",
+    "waiting_time": "Waiting Time",
+    "app_usability": "App Usability",
+    "availability": "Availability",
+    "location_convenience": "Location Convenience",
+    "improvement_suggestion": "Improvement Suggestion",
+    "overall_experience": "Overall Experience",
+    "customer_support": "Customer Support",
 }
 
 ALL_LABELS = [

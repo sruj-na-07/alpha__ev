@@ -1,6 +1,6 @@
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import JSONResponse, FileResponse
@@ -13,6 +13,7 @@ from backend.routes import (
     sentiment,
     dashboard,
     chatbot,
+    ingestion,
 )
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
@@ -52,15 +53,21 @@ app.include_router(classification.router)
 app.include_router(sentiment.router)
 app.include_router(dashboard.router)
 app.include_router(chatbot.router)
+app.include_router(ingestion.router)
+
+# Mount assets directory for Vite production bundle
+ASSETS_DIR = os.path.join(STATIC_DIR, "assets")
+if os.path.exists(ASSETS_DIR):
+    app.mount("/assets", StaticFiles(directory=ASSETS_DIR), name="assets")
 
 # Mount static files if directory exists
 if os.path.exists(STATIC_DIR):
     app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
 
 
-@app.get("/", tags=["health"])
+@app.get("/", tags=["frontend"])
 def root():
-    """Root endpoint providing platform status and API references."""
+    """Root endpoint serving the Single Page Application or API metadata."""
     index_file = os.path.join(STATIC_DIR, "index.html")
     if os.path.exists(index_file):
         return FileResponse(index_file)
@@ -82,6 +89,36 @@ def health_check():
         "status": "healthy",
         "service": "alphaev-backend",
         "version": "1.0.0",
+    }
+
+
+@app.get("/{full_path:path}", tags=["frontend"])
+def serve_spa(full_path: str):
+    """Catch-all route to serve the Single Page Application or specific static files."""
+    if (
+        full_path.startswith("api/")
+        or full_path.startswith("docs")
+        or full_path.startswith("redoc")
+        or full_path.startswith("openapi.json")
+    ):
+        raise HTTPException(status_code=404, detail="Not Found")
+
+    # If the requested path is a specific file in STATIC_DIR (e.g. alphi.svg, favicon.ico)
+    candidate_file = os.path.join(STATIC_DIR, full_path)
+    if os.path.isfile(candidate_file):
+        return FileResponse(candidate_file)
+
+    # Otherwise serve index.html for SPA client-side routes
+    index_file = os.path.join(STATIC_DIR, "index.html")
+    if os.path.exists(index_file):
+        return FileResponse(index_file)
+
+    return {
+        "platform": "AlphaEV - Explainable AI-Powered EV Review Intelligence",
+        "version": "1.0.0",
+        "status": "online",
+        "documentation": "/docs",
+        "api_prefix": "/api/v1",
     }
 
 

@@ -1,107 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>AlphaEV — EV Review Intelligence Platform</title>
-  <style>
-    :root {
-      --primary: #0284c7;
-      --primary-dark: #0369a1;
-      --bg: #0f172a;
-      --card-bg: #1e293b;
-      --text: #f8fafc;
-      --text-muted: #94a3b8;
-      --border: #334155;
-      --success: #10b981;
-      --warning: #f59e0b;
-      --danger: #ef4444;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); padding: 2rem; min-height: 100vh; }
-    .container { max-width: 1100px; margin: 0 auto; }
-    header { margin-bottom: 2rem; border-bottom: 1px solid var(--border); padding-bottom: 1.5rem; }
-    .brand { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.5rem; }
-    .logo-icon { font-size: 2rem; color: #38bdf8; }
-    h1 { font-size: 2rem; font-weight: 700; color: #f0f9ff; }
-    p.subtitle { color: var(--text-muted); font-size: 1rem; }
-    .badges { display: flex; gap: 0.75rem; margin-top: 1rem; flex-wrap: wrap; }
-    .badge { background: #1e3a5f; color: #38bdf8; padding: 0.35rem 0.75rem; border-radius: 9999px; font-size: 0.8rem; font-weight: 600; border: 1px solid #0284c7; }
-    .badge.green { background: #064e3b; color: #34d399; border-color: #059669; }
-    .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 1.5rem; margin-top: 1.5rem; }
-    .card { background: var(--card-bg); border: 1px solid var(--border); border-radius: 0.75rem; padding: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.3); }
-    .card h2 { font-size: 1.25rem; margin-bottom: 0.75rem; color: #e0f2fe; display: flex; align-items: center; gap: 0.5rem; }
-    .card p { color: var(--text-muted); font-size: 0.9rem; line-height: 1.5; margin-bottom: 1rem; }
-    .btn { display: inline-block; background: var(--primary); color: white; padding: 0.6rem 1.2rem; border-radius: 0.5rem; text-decoration: none; font-weight: 500; font-size: 0.9rem; transition: background 0.2s; border: none; cursor: pointer; }
-    .btn:hover { background: var(--primary-dark); }
-    .btn.secondary { background: #334155; }
-    .btn.secondary:hover { background: #475569; }
-    pre { background: #090d16; padding: 1rem; border-radius: 0.5rem; font-size: 0.8rem; color: #7dd3fc; overflow-x: auto; border: 1px solid #1e293b; margin-top: 0.5rem; }
-    .endpoints-list { list-style: none; margin-top: 0.5rem; }
-    .endpoints-list li { margin-bottom: 0.4rem; font-size: 0.85rem; font-family: monospace; color: #cbd5e1; }
-    .method { font-weight: bold; padding: 0.15rem 0.35rem; border-radius: 0.25rem; font-size: 0.75rem; margin-right: 0.4rem; }
-    .post { background: #065f46; color: #6ee7b7; }
-    .get { background: #1e40af; color: #93c5fd; }
-    .put { background: #854d0e; color: #fde047; }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <header>
-      <div class="brand">
-        <span class="logo-icon">⚡</span>
-        <h1>AlphaEV Intelligence Platform</h1>
-      </div>
-      <p class="subtitle">Explainable AI-Powered EV Review Intelligence Backend with 22-label Aspect Classification, SHAP Feature Attribution, and Database Grounding</p>
-      <div class="badges">
-        <span class="badge green">● FastAPI Backend Online</span>
-        <span class="badge">SQLite Synchronous Engine</span>
-        <span class="badge">11 Aspects × 2 Polarities (22 Labels)</span>
-        <span class="badge">Zero-Shot & ML Hybrid</span>
-        <span class="badge">SHAP Explainability</span>
-      </div>
-    </header>
-
-    <div class="grid">
-      <div class="card">
-        <h2>📁 API Documentation & Swagger</h2>
-        <p>Interactive OpenAPI documentation with full schemas, test requests, and endpoint descriptions.</p>
-        <div style="display: flex; gap: 0.5rem;">
-          <a href="/docs" target="_blank" class="btn">Open Swagger UI</a>
-          <a href="/redoc" target="_blank" class="btn secondary">Open ReDoc</a>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>🛠️ Core Features</h2>
-        <p>Production-grade EV review intelligence workflow:</p>
-        <ul style="padding-left: 1.2rem; font-size: 0.85rem; color: #94a3b8; line-height: 1.6;">
-          <li>Automated CSV/XLSX column mapping & encoding repair</li>
-          <li>Exact & Near duplicate detection (Jaccard >= 0.85)</li>
-          <li>Protected EV domain terminology (CHAdeMO, CCS, NACS)</li>
-          <li>Aspect-based classification with human audit corrections</li>
-          <li>Evidence-grounded SQL chatbot</li>
-        </ul>
-      </div>
-    </div>
-
-    <div class="grid" style="margin-top: 1.5rem;">
-      <div class="card" style="grid-column: 1 / -1;">
-        <h2>🔌 API Endpoints Summary (/api/v1)</h2>
-        <ul class="endpoints-list">
-          <li><span class="method post">POST</span> <code>/api/v1/upload</code> — Upload dataset file (CSV/XLSX)</li>
-          <li><span class="method get">GET</span> <code>/api/v1/datasets</code> — List uploaded datasets</li>
-          <li><span class="method post">POST</span> <code>/api/v1/datasets/{id}/clean</code> — Run data cleaning & duplicate detection</li>
-          <li><span class="method post">POST</span> <code>/api/v1/datasets/{id}/classify</code> — Run 22-label aspect classification</li>
-          <li><span class="method post">POST</span> <code>/api/v1/datasets/{id}/analyze-sentiment</code> — Run sentiment & emotion analysis</li>
-          <li><span class="method get">GET</span> <code>/api/v1/reviews/{id}/explain</code> — Generate SHAP feature attribution</li>
-          <li><span class="method get">GET</span> <code>/api/v1/datasets/{id}/dashboard</code> — Get dashboard intelligence stats</li>
-          <li><span class="method get">GET</span> <code>/api/v1/datasets/{id}/export?format=csv</code> — Export processed reviews</li>
-          <li><span class="method post">POST</span> <code>/api/v1/datasets/{id}/chat</code> — SQL-grounded chatbot query</li>
-          <li><span class="method put">PUT</span> <code>/api/v1/predictions/{id}</code> — Human correction of aspect predictions</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/alphi.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlphaEV — EV Review Intelligence</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script type="module" crossorigin src="/assets/index-C2HY3L4Z.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DB9b8qrn.css">
+  </head>
+  <body class="bg-gray-50 text-gray-900 antialiased">
+    <div id="root"></div>
+  </body>
 </html>
