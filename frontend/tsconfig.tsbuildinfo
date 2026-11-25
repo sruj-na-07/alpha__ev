@@ -1,1 +1,0 @@
-{"root":["./src/app.tsx","./src/api.ts","./src/main.tsx","./src/vite-env.d.ts","./src/components/alphi.tsx","./src/components/layout.tsx","./src/pages/chatbotpage.tsx","./src/pages/classificationpage.tsx","./src/pages/cleaningpage.tsx","./src/pages/dashboardpage.tsx","./src/pages/sentimentpage.tsx","./src/pages/uploadpage.tsx","./src/pages/welcomepage.tsx"],"version":"5.8.3"}
