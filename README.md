@@ -120,10 +120,10 @@ Powered by Cohere's Command A+ language model, Alphi combines SQL-backed review 
 - **Evidence-Based Insights:** Include supporting review information such as review IDs, ratings, detected aspects, and sentiment labels.
 - **Prompt Engineering:** Apply grounding instructions to reduce unsupported claims and distinguish dataset-specific findings from general EV knowledge.
 
-**LLM Provider:** Cohere API
-**Model:** `command-a-plus-05-2026`
-**Retrieval Approach:** SQL-backed review retrieval and keyword matching
-**Database:** SQLite
+- **LLM Provider:** Cohere API
+- **Model:** `command-a-plus-05-2026`
+- **Retrieval Approach:** SQL-backed review retrieval and keyword matching
+- **Database:** SQLite
 
 ### 9. Data Export
 - Export cleaned review datasets.
@@ -322,7 +322,7 @@ Make sure the following tools are installed:
 
 ```bash
 git clone https://github.com/sruj-na-07/alpha__ev.git
-cd AlphaEV
+cd alpha__ev
 ```
 
 ### 2. Set Up the Backend
@@ -341,8 +341,6 @@ python -m venv .venv
 ```bash
 pip install -r backend/requirements.txt
 ```
-
-Install the additional Cohere and environment-variable dependencies:
 
 
 ### 3. Configure Cohere API
